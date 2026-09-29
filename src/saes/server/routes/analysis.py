@@ -1,17 +1,23 @@
 """Analysis and validation REST endpoints."""
 
 import io
+from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 import saes
-from saes.server.schemas import AnalysisResponse, CellAnalysisSchema, ValidationIssueSchema, ValidationResponse
+from saes.server.schemas import (
+    AnalysisResponse,
+    CellAnalysisSchema,
+    ValidationIssueSchema,
+    ValidationResponse,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
 
 @router.post("/validate", response_model=ValidationResponse)
-async def validate_csv(file: UploadFile = File(...)) -> ValidationResponse:
+async def validate_csv(file: Annotated[UploadFile, File(...)]) -> ValidationResponse:
     """Validate uploaded CSV benchmark dataset."""
     content = await file.read()
     try:
@@ -39,8 +45,8 @@ async def validate_csv(file: UploadFile = File(...)) -> ValidationResponse:
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_csv(
-    file: UploadFile = File(...),
-    alpha: float = Form(0.05),
+    file: Annotated[UploadFile, File(...)],
+    alpha: Annotated[float, Form()] = 0.05,
 ) -> AnalysisResponse:
     """Execute full automated statistical analysis on uploaded CSV dataset."""
     content = await file.read()
@@ -63,7 +69,7 @@ async def analyze_csv(
                     effect_size_name=res.effect_size.name if res.effect_size else None,
                     effect_size_value=res.effect_size.value if res.effect_size else None,
                     effect_size_magnitude=res.effect_size.magnitude if res.effect_size else None,
-                    warnings=res.warnings,
+                    warnings=list(res.warnings),
                 )
             )
 

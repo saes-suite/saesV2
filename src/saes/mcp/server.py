@@ -40,15 +40,11 @@ class SAESMCPServer:
         Raises:
             NotImplementedError: Until the MCP server implementation phase is completed.
         """
-        raise NotImplementedError(
-            f"MCP Tool '{tool_name}' execution is scheduled for the MCP implementation phase."
-        )
+        raise NotImplementedError(f"MCP Tool '{tool_name}' execution is scheduled for the MCP implementation phase.")
 
     def run_stdio(self) -> None:
         """Run MCP server over standard input/output (stdio transport)."""
-        raise NotImplementedError(
-            "MCP stdio transport will be implemented in the MCP feature phase using `mcp` SDK."
-        )
+        raise NotImplementedError("MCP stdio transport will be implemented in the MCP feature phase using `mcp` SDK.")
 
 
 def main() -> None:

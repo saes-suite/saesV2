@@ -1,7 +1,5 @@
 """Context generator for formatting statistical reports and datasets into prompts."""
 
-from typing import Any
-
 from saes.app.pipeline import AnalysisReport
 from saes.domain.models import Dataset
 
@@ -34,17 +32,16 @@ def build_analysis_context(report: AnalysisReport | None, dataset: Dataset | Non
         sections.append("\n### Statistical Test Results by Experimental Cell")
         for cell in report.cell_analyses:
             res = cell.result
-            cell_header = f"#### Instance: `{cell.instance}` | Metric: `{cell.metric}`"
-            sections.append(cell_header)
+            sig_label = "Significant" if res.is_significant else "Not significant"
+            sections.append(f"#### Instance: `{cell.instance}` | Metric: `{cell.metric}`")
             sections.append(f"- **Applied Test**: {res.test_name}")
             sections.append(f"- **Statistic**: {res.statistic:.4f}")
-            sections.append(f"- **p-value**: {res.p_value:.4e} ({'Significant' if res.is_significant else 'Not significant'} at alpha={res.alpha})")
+            sections.append(f"- **p-value**: {res.p_value:.4e} ({sig_label} at alpha={res.alpha})")
             sections.append(f"- **Degrees of Freedom**: {res.degrees_of_freedom}")
 
             if res.effect_size:
-                sections.append(
-                    f"- **Effect Size**: {res.effect_size.name} = {res.effect_size.value:.4f} ({res.effect_size.magnitude})"
-                )
+                eff_text = f"{res.effect_size.name} = {res.effect_size.value:.4f} ({res.effect_size.magnitude})"
+                sections.append(f"- **Effect Size**: {eff_text}")
 
             if res.assumptions:
                 assumptions_summary: list[str] = []

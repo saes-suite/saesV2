@@ -20,7 +20,7 @@ class MCPToolSpec:
 SAES_MCP_TOOLS: list[MCPToolSpec] = [
     MCPToolSpec(
         name="validate_benchmark_csv",
-        description="Validate the schema, column names, data types, and value constraints of an algorithm benchmark CSV file.",
+        description="Validate schema, column names, data types, and value constraints of a benchmark CSV file.",
         parameters_schema={
             "type": "object",
             "properties": {
@@ -34,7 +34,7 @@ SAES_MCP_TOOLS: list[MCPToolSpec] = [
     ),
     MCPToolSpec(
         name="run_statistical_analysis",
-        description="Run automated statistical evaluation (normality, variance homogeneity, t-tests or ANOVA, effect sizes) on a benchmark CSV.",
+        description="Run automated statistical evaluation (normality, homoscedasticity, t-test/ANOVA, effect sizes).",
         parameters_schema={
             "type": "object",
             "properties": {
@@ -61,7 +61,7 @@ SAES_MCP_TOOLS: list[MCPToolSpec] = [
     ),
     MCPToolSpec(
         name="check_assumptions",
-        description="Test normality (Shapiro-Wilk) and homoscedasticity (Levene's test) for groups in a benchmark experiment.",
+        description="Test normality (Shapiro-Wilk) and homoscedasticity (Levene's test) for experimental groups.",
         parameters_schema={
             "type": "object",
             "properties": {

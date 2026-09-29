@@ -1,7 +1,6 @@
 """StatisticalChatAgent for conversational analysis interpretation."""
 
 import os
-from typing import Any
 
 from saes.app.pipeline import AnalysisReport
 from saes.chat.context import build_analysis_context
@@ -81,8 +80,8 @@ class StatisticalChatAgent:
                     p_val_str = f"p={levene_res.p_value:.3e}" if levene_res else "p < alpha"
                     explanations.append(
                         f"• For **{cell.instance} ({cell.metric})**, **{res.test_name}** was chosen "
-                        f"because Levene's test detected unequal variances across groups ({p_val_str}, violated homoscedasticity). "
-                        "Welch's adjustment adjusts the degrees of freedom via the Welch-Satterthwaite equation, "
+                        f"because Levene's test detected unequal variances across groups ({p_val_str}). "
+                        "Welch's correction adjusts degrees of freedom via the Welch-Satterthwaite equation, "
                         "preventing inflated Type I error rates."
                     )
                 else:
@@ -98,10 +97,14 @@ class StatisticalChatAgent:
             for cell in self.report.cell_analyses:
                 res = cell.result
                 if res.effect_size:
+                    mag_desc = (
+                        "A large effect indicates substantial practical differences."
+                        if res.effect_size.magnitude == "large"
+                        else "The differences between algorithms are modest."
+                    )
                     lines.append(
                         f"• **{cell.instance} ({cell.metric})**: {res.effect_size.name} = {res.effect_size.value:.4f} "
-                        f"({res.effect_size.magnitude.capitalize()} effect). "
-                        f"{'A large effect indicates substantial practical differences beyond pure statistical significance.' if res.effect_size.magnitude == 'large' else 'The differences between algorithms are modest.'}"
+                        f"({res.effect_size.magnitude.capitalize()} effect). {mag_desc}"
                     )
                 else:
                     lines.append(f"• **{cell.instance} ({cell.metric})**: No effect size computed.")
@@ -115,7 +118,8 @@ class StatisticalChatAgent:
                 lines.append(f"#### `{cell.instance}` — `{cell.metric}`")
                 for a in res.assumptions:
                     icon = "✅" if a.passed else "⚠️"
-                    lines.append(f"- {icon} **{a.name}**: statistic={a.statistic:.4f}, p={a.p_value:.4e} ({'Passed' if a.passed else 'Violated'})")
+                    status = "Passed" if a.passed else "Violated"
+                    lines.append(f"- {icon} **{a.name}**: statistic={a.statistic:.4f}, p={a.p_value:.4e} ({status})")
             return "### Statistical Assumptions Evaluation\n\n" + "\n".join(lines)
 
         # Default summary interpretation
@@ -128,19 +132,20 @@ class StatisticalChatAgent:
             sig = "statistically significant" if res.is_significant else "not statistically significant"
             eff = f" with {res.effect_size.magnitude} effect ({res.effect_size.value:.3f})" if res.effect_size else ""
             summary_lines.append(
-                f"- **{cell.instance} ({cell.metric})**: Tested using **{res.test_name}** ($F/t={res.statistic:.3f}$, $p={res.p_value:.4e}$). "
+                f"- **{cell.instance} ({cell.metric})**: Tested using **{res.test_name}** "
+                f"($F/t={res.statistic:.3f}$, $p={res.p_value:.4e}$). "
                 f"The difference is {sig} at $\\alpha={res.alpha}${eff}."
             )
 
         summary_lines.append(
-            "\n*Tip: Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your environment to enable full open-ended conversational reasoning.*"
+            "\n*Tip: Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` to enable open-ended reasoning.*"
         )
         return "\n".join(summary_lines)
 
     def _call_anthropic(self, query: str, context: str, api_key: str) -> str:
         """Call Anthropic Claude API for conversational response."""
         try:
-            import anthropic  # type: ignore
+            import anthropic
 
             client = anthropic.Anthropic(api_key=api_key)
             prompt = f"{context}\n\nUser Question: {query}"
@@ -153,12 +158,13 @@ class StatisticalChatAgent:
             content = message.content[0]
             return getattr(content, "text", str(content))
         except Exception as e:
-            return f"[Claude API unavailable: {e!s}]. Falling back to offline engine:\n\n" + self._offline_statistical_interpret(query, context)
+            fallback = self._offline_statistical_interpret(query, context)
+            return f"[Claude API unavailable: {e!s}]. Falling back to offline engine:\n\n{fallback}"
 
     def _call_openai(self, query: str, context: str, api_key: str) -> str:
         """Call OpenAI API for conversational response."""
         try:
-            import openai  # type: ignore
+            import openai
 
             client = openai.OpenAI(api_key=api_key)
             completion = client.chat.completions.create(
@@ -170,4 +176,5 @@ class StatisticalChatAgent:
             )
             return completion.choices[0].message.content or ""
         except Exception as e:
-            return f"[OpenAI API unavailable: {e!s}]. Falling back to offline engine:\n\n" + self._offline_statistical_interpret(query, context)
+            fallback = self._offline_statistical_interpret(query, context)
+            return f"[OpenAI API unavailable: {e!s}]. Falling back to offline engine:\n\n{fallback}"
