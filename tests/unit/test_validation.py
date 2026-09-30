@@ -95,3 +95,25 @@ def test_validator_strict_types() -> None:
     rep2 = v.validate(df_bool_run)
     assert not rep2.is_valid
     assert any(e.column == "run_id" for e in rep2.errors)
+
+
+def test_benchmark_record_pydantic() -> None:
+    from saes.domain.models import BenchmarkRecord, Dataset
+
+    record = BenchmarkRecord(
+        algorithm="NSGAII",
+        instance="ZDT1",
+        metric="HV",
+        run_id=0,
+        value=0.6543,
+        maximize=True,
+    )
+    assert record.algorithm == "NSGAII"
+    assert record.value == 0.6543
+    assert record.maximize is True
+
+    df = pd.DataFrame([record.model_dump()])
+    ds = Dataset(df)
+    records = ds.to_records()
+    assert len(records) == 1
+    assert records[0] == record

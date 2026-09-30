@@ -34,3 +34,14 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+def main() -> None:
+    """CLI entry point for running the SAES REST API server via saes-api."""
+    import uvicorn
+
+    uvicorn.run("saes.server.app:app", host="0.0.0.0", port=8000, reload=True)
+
+
+if __name__ == "__main__":
+    main()

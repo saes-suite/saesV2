@@ -1,5 +1,7 @@
 """Dataset schema and structural validation engine for SAES."""
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -7,6 +9,25 @@ from saes.domain.exceptions import ValidationError
 from saes.domain.models import ValidationReport
 
 REQUIRED_COLUMNS = ["algorithm", "instance", "metric", "run_id", "value", "maximize"]
+
+VALID_BOOL_STRINGS = {
+    "true",
+    "false",
+    "1",
+    "0",
+    "yes",
+    "no",
+    "t",
+    "f",
+}
+
+
+def _is_valid_id(x: Any) -> bool:
+    """Validate that string ID is non-null, non-empty, and not a NaN literal."""
+    if x is None or pd.isna(x):
+        return False
+    s = str(x).strip()
+    return len(s) > 0 and s.lower() not in ("nan", "null", "none")
 
 
 class DatasetValidator:
@@ -53,12 +74,6 @@ class DatasetValidator:
         # 4. Column Type & Value Validation
         # algorithm, instance, metric: string validation
         for col in ["algorithm", "instance", "metric"]:
-            def _is_valid_id(x: object) -> bool:
-                if pd.isna(x):
-                    return False
-                s = str(x).strip()
-                return len(s) > 0 and s.lower() not in ("nan", "null", "none")
-
             non_str = df[df[col].notnull() & ~df[col].apply(_is_valid_id)]
             if not non_str.empty:
                 for idx in non_str.index[:5]:  # limit sample reported rows
@@ -66,7 +81,7 @@ class DatasetValidator:
                         issue_type="InvalidType",
                         message=f"Column '{col}' must contain non-empty string values. Found: '{df.loc[idx, col]}'",
                         column=col,
-                        row_index=int(idx),
+                        row_index=int(str(idx)),
                     )
 
         # run_id: non-negative integer
@@ -125,29 +140,13 @@ class DatasetValidator:
                 )
 
         # maximize: strictly boolean (True/False, 1/0, "true"/"false")
-        valid_bool_literals = {
-            True,
-            False,
-            1,
-            0,
-            1.0,
-            0.0,
-            "true",
-            "false",
-            "1",
-            "0",
-            "yes",
-            "no",
-            "t",
-            "f",
-        }
         for idx, val in df["maximize"].dropna().items():
             is_valid_bool = False
             if isinstance(val, (bool, np.bool_)):
                 is_valid_bool = True
             elif isinstance(val, (int, float, np.integer, np.floating)) and val in (0, 1, 0.0, 1.0):
                 is_valid_bool = True
-            elif isinstance(val, str) and val.strip().lower() in valid_bool_literals:
+            elif isinstance(val, str) and val.strip().lower() in VALID_BOOL_STRINGS:
                 is_valid_bool = True
 
             if not is_valid_bool:

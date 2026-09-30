@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from saes.domain.models import AssumptionResult, ValidationIssue
+
 
 class HealthResponse(BaseModel):
     """Health check response."""
@@ -13,14 +15,8 @@ class HealthResponse(BaseModel):
     service: str = "saes-api"
 
 
-class ValidationIssueSchema(BaseModel):
-    """Schema for individual validation issue."""
-
-    severity: str
-    issue_type: str
-    message: str
-    column: str | None = None
-    row_index: int | None = None
+# Backwards-compatible alias for ValidationIssue
+ValidationIssueSchema = ValidationIssue
 
 
 class ValidationResponse(BaseModel):
@@ -29,7 +25,7 @@ class ValidationResponse(BaseModel):
     is_valid: bool
     error_count: int
     warning_count: int
-    issues: list[ValidationIssueSchema]
+    issues: list[ValidationIssue]
 
 
 class CellAnalysisSchema(BaseModel):
@@ -45,6 +41,7 @@ class CellAnalysisSchema(BaseModel):
     effect_size_name: str | None = None
     effect_size_value: float | None = None
     effect_size_magnitude: str | None = None
+    assumptions: list[AssumptionResult] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 

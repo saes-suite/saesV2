@@ -109,9 +109,10 @@ def test_missing_columns_raise_visualization_error() -> None:
 
 def test_plotter_registry() -> None:
     available = PlotterRegistry.list_available()
-    assert "boxplot" in available
-    assert "scatter" in available
-    assert len(available) == 2
+    expected_plotters = {"boxplot", "violin", "barplot", "lineplot", "ecdf", "scatter"}
+    for p in expected_plotters:
+        assert p in available
+    assert len(available) == 6
 
     boxplot_instance = PlotterRegistry.get("boxplot")
     assert isinstance(boxplot_instance, BoxplotGenerator)

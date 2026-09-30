@@ -9,7 +9,6 @@ import saes
 from saes.server.schemas import (
     AnalysisResponse,
     CellAnalysisSchema,
-    ValidationIssueSchema,
     ValidationResponse,
 )
 
@@ -23,21 +22,11 @@ async def validate_csv(file: Annotated[UploadFile, File(...)]) -> ValidationResp
     try:
         dataset = saes.load(io.BytesIO(content))
         report = saes.validate(dataset)
-        issues = [
-            ValidationIssueSchema(
-                severity=i.severity.name,
-                issue_type=i.issue_type,
-                message=i.message,
-                column=i.column,
-                row_index=i.row_index,
-            )
-            for i in report.issues
-        ]
         return ValidationResponse(
             is_valid=report.is_valid,
             error_count=len(report.errors),
             warning_count=len(report.warnings),
-            issues=issues,
+            issues=report.issues,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"File parsing error: {e!s}") from e
@@ -69,6 +58,7 @@ async def analyze_csv(
                     effect_size_name=res.effect_size.name if res.effect_size else None,
                     effect_size_value=res.effect_size.value if res.effect_size else None,
                     effect_size_magnitude=res.effect_size.magnitude if res.effect_size else None,
+                    assumptions=list(res.assumptions),
                     warnings=list(res.warnings),
                 )
             )

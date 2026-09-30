@@ -5,18 +5,18 @@
 
 ## Project Identity
 
-**What**: SAES (Stochastic Algorithm Evaluation Suite) — Modern Python library and Streamlit GUI for statistical analysis, hypothesis testing, and algorithm evaluation.
+**What**: SAES (Stochastic Algorithm Evaluation Suite) — Modern Python scientific library and FastAPI REST server for statistical analysis, automated hypothesis testing, and benchmark evaluation.
 
 **Who**: SAES development team.
 
-**Goal**: Provide a clean, extensible statistical suite (t-tests, ANOVA, assumption checkers, decision engines) and automated reporting for algorithm evaluation.
+**Goal**: Provide a clean, extensible statistical suite (t-tests, ANOVA, assumption checkers, decision engines, Pydantic domain models) and automated REST reporting for algorithm evaluation.
 
 ---
 
 ## Repository Layout
 
 ```
-SAES2/
+saes/
 ├── .agents/
 │   └── rules/
 │       └── code-guidelines.md   ← always_on agent context
@@ -24,19 +24,20 @@ SAES2/
 │   └── workflows/
 │       ├── tests.yml            ← CI pipeline (lint + test)
 │       └── release.yml          ← Release stamp & bump on merged PRs
-├── docs/                        ← Project documentation
 ├── scripts/
 │   └── release_stamp.js         ← Version & CHANGELOG automation
 ├── src/
 │   └── saes/                    ← Core library source code
 │       ├── api.py               ← High-level public API
 │       ├── app/                 ← Execution pipeline
-│       ├── domain/              ← Data models & exceptions
-│       ├── gui/                 ← Streamlit interface
+│       ├── chat/                ← AI statistical consultant agent
+│       ├── domain/              ← Pydantic data models & exceptions
 │       ├── io/                  ← CSV data readers & input handlers
+│       ├── mcp/                 ← Model Context Protocol server
+│       ├── server/              ← FastAPI REST service (routes & schemas)
 │       ├── stats/               ← Statistical algorithms (ANOVA, t-tests)
 │       ├── validation/          ← Dataset validators
-│       └── visualization/       ← Boxplot and plot generators
+│       └── visualization/       ← Boxplot, violin, and plot generators
 ├── tests/                       ← Pytest suite (unit, statistical, integration)
 ├── CHANGELOG.md                 ← Release history
 ├── CLAUDE.md                    ← This file
@@ -55,9 +56,10 @@ SAES2/
 |-------|------------|-------|
 | Language | Python >= 3.11 | Modern Python standard |
 | Package Manager | `uv` | Fast package management & environment resolution |
+| Data Validation | Pydantic V2 | Strict data modeling & canonical BenchmarkRecord |
 | Statistical Engines | NumPy, SciPy, Pandas, Statsmodels | Core computations & dataframes |
-| Visualization | Matplotlib, Seaborn | Charting engines |
-| GUI | Streamlit | Interactive web interface |
+| Visualization | Matplotlib, Seaborn, Plotly | Charting engines & PlotterRegistry |
+| REST API | FastAPI, Uvicorn | High-performance async REST backend |
 | Linter & Formatter | Ruff | Fast static analysis & formatting |
 | Type Checker | MyPy | Strict type hints checking |
 | Testing Framework | Pytest, Pytest-Cov | Unit, statistical correctness & integration tests |

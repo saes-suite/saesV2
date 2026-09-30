@@ -1,21 +1,35 @@
-"""Domain data models and immutable result value objects for SAES."""
+"""Domain data models, canonical benchmark records, and immutable result objects for SAES."""
 
-from dataclasses import dataclass, field
-from enum import Enum, auto
+from enum import StrEnum
 
 import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class Severity(Enum):
+class BenchmarkRecord(BaseModel):
+    """Canonical strict schema for a single benchmark evaluation observation."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    algorithm: str = Field(min_length=1, description="Algorithm identifier")
+    instance: str = Field(min_length=1, description="Benchmark instance or problem name")
+    metric: str = Field(min_length=1, description="Evaluation metric name (e.g. HV, IGD, Runtime)")
+    run_id: int = Field(ge=0, description="Run seed or execution repetition identifier (>= 0)")
+    value: float = Field(allow_inf_nan=False, description="Finite numeric observation value")
+    maximize: bool = Field(description="Optimization direction: True to maximize, False to minimize")
+
+
+class Severity(StrEnum):
     """Validation issue severity level."""
 
-    ERROR = auto()
-    WARNING = auto()
+    ERROR = "ERROR"
+    WARNING = "WARNING"
 
 
-@dataclass(frozen=True)
-class ValidationIssue:
+class ValidationIssue(BaseModel):
     """Represents a single structural, schema, or value validation issue."""
+
+    model_config = ConfigDict(frozen=True)
 
     severity: Severity
     issue_type: str
@@ -31,15 +45,14 @@ class ValidationIssue:
             loc = f" [Col '{self.column}']"
         elif self.row_index is not None:
             loc = f" [Row {self.row_index}]"
-        return f"[{self.severity.name}] {self.issue_type}{loc}: {self.message}"
+        return f"[{self.severity.value}] {self.issue_type}{loc}: {self.message}"
 
 
-@dataclass
-class ValidationReport:
+class ValidationReport(BaseModel):
     """Summary report of dataset validation results."""
 
     is_valid: bool
-    issues: list[ValidationIssue] = field(default_factory=list)
+    issues: list[ValidationIssue] = Field(default_factory=list)
 
     @property
     def errors(self) -> list[ValidationIssue]:
@@ -83,9 +96,10 @@ class ValidationReport:
         )
 
 
-@dataclass(frozen=True)
-class AssumptionResult:
+class AssumptionResult(BaseModel):
     """Outcome of a statistical assumption test (e.g. Shapiro-Wilk, Levene)."""
+
+    model_config = ConfigDict(frozen=True)
 
     name: str
     statistic: float
@@ -95,9 +109,10 @@ class AssumptionResult:
     details: str = ""
 
 
-@dataclass(frozen=True)
-class EffectSize:
+class EffectSize(BaseModel):
     """Standardized effect size measure."""
+
+    model_config = ConfigDict(frozen=True)
 
     name: str  # e.g., "Cohen's d", "Hedges' g", "Eta-squared"
     value: float
@@ -106,29 +121,30 @@ class EffectSize:
     magnitude: str = ""  # e.g., "negligible", "small", "medium", "large"
 
 
-@dataclass(frozen=True)
-class StatisticalResult:
+class StatisticalResult(BaseModel):
     """Immutable structured result of a statistical analysis test."""
+
+    model_config = ConfigDict(frozen=True)
 
     test_name: str
     statistic: float
     p_value: float
-    degrees_of_freedom: float | tuple[float, ...] | None
+    degrees_of_freedom: float | tuple[float, ...] | str | None = None
     alpha: float
     is_significant: bool
-    effect_size: EffectSize | None
-    confidence_interval: tuple[float, float] | None
-    assumptions: tuple[AssumptionResult, ...]
-    warnings: tuple[str, ...]
-    interpretation: str
-    group_summaries: dict[str, dict[str, float]]
+    effect_size: EffectSize | None = None
+    confidence_interval: tuple[float, float] | None = None
+    assumptions: tuple[AssumptionResult, ...] = Field(default_factory=tuple)
+    warnings: tuple[str, ...] = Field(default_factory=tuple)
+    interpretation: str = ""
+    group_summaries: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 
-@dataclass
 class Dataset:
     """Represents a validated SAES dataset wrapping standard algorithm evaluation records."""
 
-    df: pd.DataFrame
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
 
     @property
     def algorithms(self) -> list[str]:
@@ -148,3 +164,10 @@ class Dataset:
     def get_cell(self, instance: str, metric: str) -> pd.DataFrame:
         """Filter dataset for a specific (instance, metric) experimental context."""
         return self.df[(self.df["instance"] == instance) & (self.df["metric"] == metric)].copy()
+
+    def to_records(self) -> list[BenchmarkRecord]:
+        """Convert underlying DataFrame observations into strictly validated BenchmarkRecord models."""
+        from pydantic import TypeAdapter
+
+        adapter = TypeAdapter(list[BenchmarkRecord])
+        return adapter.validate_python(self.df.to_dict(orient="records"))

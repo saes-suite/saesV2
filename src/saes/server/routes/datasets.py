@@ -1,21 +1,21 @@
-"""Dataset storage, retrieval, validation, and analysis endpoints."""
-
+import io
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 import saes
+from saes.io.csv_reader import CSVReader
 from saes.server.schemas import (
     AnalysisResponse,
     CellAnalysisSchema,
     DatasetDetailSchema,
     DatasetItemSchema,
     DatasetUpdateSchema,
-    ValidationIssueSchema,
     ValidationResponse,
 )
 from saes.server.storage import get_datasets_dir
+from saes.validation.validator import DatasetValidator
 
 router = APIRouter(prefix="/api/v1/datasets", tags=["Datasets"])
 
@@ -70,10 +70,6 @@ async def upload_dataset(file: Annotated[UploadFile, File(...)]) -> DatasetItemS
 
     # Strict structural and schema validation before accepting upload
     try:
-        import io
-        from saes.io.csv_reader import CSVReader
-        from saes.validation.validator import DatasetValidator
-
         df = CSVReader().read(io.BytesIO(content))
         report = DatasetValidator().validate(df)
         missing_col_errors = [e for e in report.errors if e.issue_type == "MissingColumns"]
@@ -151,21 +147,11 @@ def validate_dataset_from_path(filename: str) -> ValidationResponse:
     try:
         dataset = saes.load(file_path)
         report = saes.validate(dataset)
-        issues = [
-            ValidationIssueSchema(
-                severity=i.severity.name,
-                issue_type=i.issue_type,
-                message=i.message,
-                column=i.column,
-                row_index=i.row_index,
-            )
-            for i in report.issues
-        ]
         return ValidationResponse(
             is_valid=report.is_valid,
             error_count=len(report.errors),
             warning_count=len(report.warnings),
-            issues=issues,
+            issues=report.issues,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Dataset validation error: {e!s}") from e
@@ -201,6 +187,7 @@ def analyze_dataset_from_path(
                     effect_size_name=res.effect_size.name if res.effect_size else None,
                     effect_size_value=res.effect_size.value if res.effect_size else None,
                     effect_size_magnitude=res.effect_size.magnitude if res.effect_size else None,
+                    assumptions=list(res.assumptions),
                     warnings=list(res.warnings),
                 )
             )

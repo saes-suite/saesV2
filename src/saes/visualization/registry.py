@@ -3,9 +3,13 @@
 from typing import Any
 
 from saes.domain.exceptions import VisualizationError
+from saes.visualization.barplot import BarPlotGenerator
 from saes.visualization.base import Plotter
 from saes.visualization.boxplot import BoxplotGenerator
+from saes.visualization.ecdfplot import ECDFPlotGenerator
+from saes.visualization.lineplot import LinePlotGenerator
 from saes.visualization.scatterplot import ScatterPlotGenerator
+from saes.visualization.violinplot import ViolinPlotGenerator
 
 
 class PlotterRegistry:
@@ -13,6 +17,10 @@ class PlotterRegistry:
 
     _registry: dict[str, type[Plotter]] = {
         "boxplot": BoxplotGenerator,
+        "violin": ViolinPlotGenerator,
+        "barplot": BarPlotGenerator,
+        "lineplot": LinePlotGenerator,
+        "ecdf": ECDFPlotGenerator,
         "scatter": ScatterPlotGenerator,
     }
 
