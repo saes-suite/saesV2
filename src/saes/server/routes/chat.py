@@ -4,13 +4,67 @@ import io
 from pathlib import Path
 
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 import saes
 from saes.chat.agent import StatisticalChatAgent
-from saes.server.schemas import ChatRequest, ChatResponse
+from saes.server.schemas import (
+    ChatRequest,
+    ChatResponse,
+    LocalModelsResponse,
+    OllamaPullRequest,
+    OllamaPullResponse,
+    ProviderProbeRequest,
+    ProviderProbeResponse,
+)
 from saes.server.storage import get_datasets_dir
 
 router = APIRouter(prefix="/api/v1", tags=["Chat"])
+
+
+@router.get("/chat/models/local", response_model=LocalModelsResponse)
+def get_local_models(base_url: str = "http://localhost:11434") -> LocalModelsResponse:
+    """Fetch installed models from a local Ollama or compatible server."""
+    models = StatisticalChatAgent.fetch_local_models(base_url=base_url)
+    return LocalModelsResponse(models=models, status="ok" if models else "empty")
+
+
+@router.post("/chat/probe", response_model=ProviderProbeResponse)
+def probe_provider_connection(req: ProviderProbeRequest) -> ProviderProbeResponse:
+    """Test connectivity to any AI provider and retrieve available models."""
+    res = StatisticalChatAgent.probe_provider(
+        provider=req.provider,
+        api_key=req.api_key,
+        base_url=req.base_url,
+    )
+    return ProviderProbeResponse(**res)
+
+
+@router.post("/chat/ollama/start")
+def start_ollama_daemon() -> dict[str, bool]:
+    """Attempt to start the local Ollama background server daemon."""
+    started = StatisticalChatAgent.start_ollama_service()
+    return {"started": started}
+
+
+@router.post("/chat/ollama/pull", response_model=OllamaPullResponse)
+def pull_ollama_model(req: OllamaPullRequest) -> OllamaPullResponse:
+    """Download / pull a model into the local Ollama server."""
+    res = StatisticalChatAgent.pull_ollama_model(
+        name=req.name,
+        base_url=req.base_url or "http://localhost:11434",
+    )
+    return OllamaPullResponse(**res)
+
+
+@router.post("/chat/ollama/pull/stream")
+def pull_ollama_model_stream(req: OllamaPullRequest) -> StreamingResponse:
+    """Download / pull a model into the local Ollama server with progress streaming."""
+    generator = StatisticalChatAgent.stream_pull_ollama_model(
+        name=req.name,
+        base_url=req.base_url or "http://localhost:11434",
+    )
+    return StreamingResponse(generator, media_type="application/x-ndjson")
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -42,6 +96,13 @@ def chat_with_agent(req: ChatRequest) -> ChatResponse:
         except Exception:
             pass
 
-    agent = StatisticalChatAgent(report=report, dataset=dataset)
+    agent = StatisticalChatAgent(
+        report=report,
+        dataset=dataset,
+        provider=req.provider,
+        model=req.model,
+        api_key=req.api_key,
+        base_url=req.base_url,
+    )
     answer = agent.ask(req.query)
     return ChatResponse(response=answer, context_used=report is not None)
