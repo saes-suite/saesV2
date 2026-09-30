@@ -55,10 +55,39 @@ class AnalysisResponse(BaseModel):
     results: list[CellAnalysisSchema]
 
 
+class DatasetItemSchema(BaseModel):
+    """Metadata schema for a saved benchmark dataset."""
+
+    name: str
+    filename: str
+    path: str
+    size_bytes: int
+    row_count: int | None = None
+    modified_at: float | None = None
+
+
+class DatasetDetailSchema(BaseModel):
+    """Detailed response for a dataset including its CSV contents."""
+
+    name: str
+    filename: str
+    path: str
+    size_bytes: int
+    row_count: int
+    content: str
+
+
+class DatasetUpdateSchema(BaseModel):
+    """Payload for updating or saving CSV dataset content."""
+
+    content: str
+
+
 class ChatRequest(BaseModel):
     """User query request for the statistical chat assistant."""
 
     query: str
+    dataset_name: str | None = None
     csv_data: str | None = None
     alpha: float = 0.05
 

@@ -27,6 +27,9 @@ class CSVReader(DataReader):
             df = pd.read_csv(source, skipinitialspace=True)
             if df.empty:
                 raise InputError("Input CSV file is empty.")
+            for col in ("algorithm", "instance", "metric"):
+                if col in df.columns:
+                    df[col] = df[col].astype(str)
             return df
         except pd.errors.EmptyDataError as e:
             raise InputError("Input CSV file is empty.") from e
