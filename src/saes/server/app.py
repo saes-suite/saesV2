@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from saes.server.routes.analysis import router as analysis_router
-from saes.server.routes.chat import router as chat_router
 from saes.server.routes.datasets import router as datasets_router
 from saes.server.routes.health import router as health_router
 
@@ -28,7 +27,14 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(datasets_router)
     app.include_router(analysis_router)
-    app.include_router(chat_router)
+
+    # Mount SAES-AI routes if installed in the environment
+    try:
+        from saes_ai.server.routes import router as ai_router
+
+        app.include_router(ai_router)
+    except ImportError:
+        pass
 
     return app
 

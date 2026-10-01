@@ -7,14 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Decoupled `AnalysisPipeline` from direct Matplotlib plotting imports.
-- Created `saes.server` with FastAPI REST service endpoints (`/health`, `/api/v1/validate`, `/api/v1/analyze`, `/api/v1/chat`).
-- Created `saes.chat` with `StatisticalChatAgent` supporting offline interpretation and Anthropic/OpenAI connectors.
-- Prepared architectural structure for Model Context Protocol (MCP) in `saes.mcp`.
-- Prepared Claude Plugin manifest and prompt instructions in `saes.plugins.claude`.
-- Modularized dependencies into `[viz]`, `[api]`, `[chat]`, and `[all]` extras.
+### Changed
+- Decoupled and extracted `chat`, `mcp`, and `plugins` into the dedicated `saes-ai` package.
+- `saes.server.app` now dynamically mounts `saes_ai.server.routes` when `saes-ai` is installed without internal legacy fallbacks.
+- Cleaned core dependencies by removing `chat` extra and delegating AI tooling to `[ai]` optional extra (`saes-ai`).
 
 ## [0.1.0] - 2026-08-19
 

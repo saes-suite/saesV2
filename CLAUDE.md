@@ -30,10 +30,8 @@ saes/
 │   └── saes/                    ← Core library source code
 │       ├── api.py               ← High-level public API
 │       ├── app/                 ← Execution pipeline
-│       ├── chat/                ← AI statistical consultant agent
 │       ├── domain/              ← Pydantic data models & exceptions
 │       ├── io/                  ← CSV data readers & input handlers
-│       ├── mcp/                 ← Model Context Protocol server
 │       ├── server/              ← FastAPI REST service (routes & schemas)
 │       ├── stats/               ← Statistical algorithms (ANOVA, t-tests)
 │       ├── validation/          ← Dataset validators
