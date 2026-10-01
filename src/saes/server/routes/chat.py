@@ -1,6 +1,8 @@
 """Statistical chat assistant REST endpoint."""
 
 import io
+import json
+from collections.abc import Generator
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -106,3 +108,59 @@ def chat_with_agent(req: ChatRequest) -> ChatResponse:
     )
     answer = agent.ask(req.query)
     return ChatResponse(response=answer, context_used=report is not None)
+
+
+@router.post("/chat/stream")
+def chat_with_agent_stream(req: ChatRequest) -> StreamingResponse:
+    """Ask a question to the statistical AI agent with live token streaming."""
+    dataset = None
+    report = None
+
+    if req.dataset_name:
+        try:
+            safe_name = Path(req.dataset_name).name
+            file_path = get_datasets_dir() / safe_name
+            if file_path.exists() and file_path.is_file():
+                dataset = saes.load(file_path)
+                val = saes.validate(dataset)
+                if val.is_valid:
+                    report = saes.analyze(dataset, alpha=req.alpha, generate_plots=False)
+        except Exception:
+            pass
+
+    if dataset is None and req.csv_data:
+        try:
+            dataset = saes.load(io.StringIO(req.csv_data))
+            val = saes.validate(dataset)
+            if val.is_valid:
+                report = saes.analyze(dataset, alpha=req.alpha, generate_plots=False)
+        except Exception:
+            pass
+
+    agent = StatisticalChatAgent(
+        report=report,
+        dataset=dataset,
+        provider=req.provider,
+        model=req.model,
+        api_key=req.api_key,
+        base_url=req.base_url,
+    )
+
+    def event_generator() -> Generator[str, None, None]:
+        context_used = report is not None
+        try:
+            for token in agent.stream_ask(req.query):
+                yield json.dumps({"token": token, "done": False, "context_used": context_used}) + "\n"
+            yield json.dumps({"token": "", "done": True, "context_used": context_used}) + "\n"
+        except Exception as e:
+            yield json.dumps({"error": str(e), "token": "", "done": True, "context_used": context_used}) + "\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

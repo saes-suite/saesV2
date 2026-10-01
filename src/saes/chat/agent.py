@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -138,6 +139,362 @@ class StatisticalChatAgent:
         response = self._offline_statistical_interpret(query, context_str)
         self.history.append({"role": "assistant", "content": response})
         return response
+
+    def stream_ask(self, query: str) -> Iterator[str]:
+        """Process user query and yield response tokens iteratively.
+
+        Args:
+            query: Question or prompt from user.
+
+        Yields:
+            Token or text chunk strings as they are generated.
+        """
+        self.history.append({"role": "user", "content": query})
+        context_str = build_analysis_context(self.report, self.dataset)
+        provider = (self.provider or "offline").lower().strip()
+
+        chunks: list[str] = []
+
+        def _gather(gen: Iterator[str]) -> Iterator[str]:
+            for chunk in gen:
+                chunks.append(chunk)
+                yield chunk
+
+        if provider == "local":
+            gen = self._stream_local(query, context_str, model=self.model, base_url=self.base_url)
+        elif provider == "openai":
+            key = self.api_key or os.getenv("OPENAI_API_KEY")
+            if key:
+                gen = self._stream_openai(query, context_str, api_key=key, model=self.model, base_url=self.base_url)
+            else:
+                gen = self._stream_missing_key("OpenAI", query, context_str)
+        elif provider == "anthropic":
+            key = self.api_key or os.getenv("ANTHROPIC_API_KEY")
+            if key:
+                gen = self._stream_anthropic(query, context_str, api_key=key, model=self.model)
+            else:
+                gen = self._stream_missing_key("Anthropic", query, context_str)
+        elif provider in ("gemini", "google"):
+            key = self.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if key:
+                gen = self._stream_gemini(query, context_str, api_key=key, model=self.model)
+            else:
+                gen = self._stream_missing_key("Google Gemini", query, context_str)
+        elif provider == "offline":
+            gen = self._stream_offline(query, context_str)
+        else:
+            anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+            openai_key = os.getenv("OPENAI_API_KEY")
+            if anthropic_key:
+                gen = self._stream_anthropic(query, context_str, api_key=anthropic_key, model=self.model)
+            elif openai_key:
+                gen = self._stream_openai(query, context_str, api_key=openai_key, model=self.model)
+            else:
+                gen = self._stream_offline(query, context_str)
+
+        try:
+            yield from _gather(gen)
+        finally:
+            full_response = "".join(chunks)
+            if full_response:
+                self.history.append({"role": "assistant", "content": full_response})
+
+    def _stream_missing_key(self, provider_name: str, query: str, context: str) -> Iterator[str]:
+        prefix = f"[{provider_name} API key missing]. Falling back to offline statistical engine:\n\n"
+        yield prefix
+        yield from self._stream_offline(query, context)
+
+    def _stream_offline(self, query: str, context: str) -> Iterator[str]:
+        full_text = self._offline_statistical_interpret(query, context)
+        tokens = re.split(r"(\s+)", full_text)
+        is_test = bool(os.getenv("PYTEST_CURRENT_TEST"))
+        for token in tokens:
+            if not token:
+                continue
+            yield token
+            if not is_test:
+                time.sleep(0.003)
+
+    def _stream_local(
+        self,
+        query: str,
+        context: str,
+        model: str | None = None,
+        base_url: str | None = None,
+    ) -> Iterator[str]:
+        if not model or not model.strip():
+            yield (
+                "[No model specified for Local AI. Please connect to Ollama and select a model in Settings]. "
+                "Falling back to offline statistical engine:\n\n"
+            )
+            yield from self._stream_offline(query, context)
+            return
+
+        selected_model = model.strip()
+        clean_url = (base_url or "http://localhost:11434").rstrip("/")
+        prompt = f"{context}\n\nUser Question: {query}"
+
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                if clean_url.endswith("/v1"):
+                    v1_payload: dict[str, Any] = {
+                        "model": selected_model,
+                        "stream": True,
+                        "messages": [
+                            {"role": "system", "content": self.system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                    }
+                    with client.stream("POST", f"{clean_url}/chat/completions", json=v1_payload) as res:
+                        res.raise_for_status()
+                        for line in res.iter_lines():
+                            line = line.strip()
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data_str)
+                                choices = chunk.get("choices", [])
+                                if choices:
+                                    delta = choices[0].get("delta", {}).get("content", "")
+                                    if delta:
+                                        yield delta
+                            except Exception:
+                                continue
+                else:
+                    ollama_payload: dict[str, Any] = {
+                        "model": selected_model,
+                        "stream": True,
+                        "messages": [
+                            {"role": "system", "content": self.system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                    }
+                    with client.stream("POST", f"{clean_url}/api/chat", json=ollama_payload) as res:
+                        res.raise_for_status()
+                        for line in res.iter_lines():
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                chunk = json.loads(line)
+                                msg = chunk.get("message", {})
+                                content = msg.get("content", "")
+                                if content:
+                                    yield content
+                                if chunk.get("done", False):
+                                    break
+                            except Exception:
+                                continue
+        except Exception as e:
+            yield (
+                f"[Local AI error on {clean_url} (model: {selected_model}): {e!s}]. "
+                "Ensure Ollama or your local server is running.\n\n"
+                "Falling back to offline statistical engine:\n\n"
+            )
+            yield from self._stream_offline(query, context)
+
+    def _stream_openai(
+        self,
+        query: str,
+        context: str,
+        api_key: str,
+        model: str | None = None,
+        base_url: str | None = None,
+    ) -> Iterator[str]:
+        if not model or not model.strip():
+            yield (
+                "[No model specified for OpenAI. Please select a model in Settings]. "
+                "Falling back to offline statistical engine:\n\n"
+            )
+            yield from self._stream_offline(query, context)
+            return
+
+        selected_model = model.strip()
+        prompt = f"{context}\n\nUser Question: {query}"
+
+        try:
+            try:
+                import openai
+
+                client = openai.OpenAI(api_key=api_key, base_url=base_url or None)
+                stream = client.chat.completions.create(
+                    model=selected_model,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=True,
+                )
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+                return
+            except ImportError:
+                pass
+
+            target_url = (base_url or "https://api.openai.com/v1").rstrip("/") + "/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload: dict[str, Any] = {
+                "model": selected_model,
+                "stream": True,
+                "messages": [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+            }
+            with httpx.Client(timeout=60.0) as client:
+                with client.stream("POST", target_url, headers=headers, json=payload) as res:
+                    res.raise_for_status()
+                    for line in res.iter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            choices = chunk.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {}).get("content", "")
+                                if delta:
+                                    yield delta
+                        except Exception:
+                            continue
+        except Exception as e:
+            yield f"[OpenAI API unavailable: {e!s}]. Falling back to offline engine:\n\n"
+            yield from self._stream_offline(query, context)
+
+    def _stream_anthropic(
+        self,
+        query: str,
+        context: str,
+        api_key: str,
+        model: str | None = None,
+    ) -> Iterator[str]:
+        if not model or not model.strip():
+            yield (
+                "[No model specified for Anthropic Claude. Please select a model in Settings]. "
+                "Falling back to offline statistical engine:\n\n"
+            )
+            yield from self._stream_offline(query, context)
+            return
+
+        selected_model = model.strip()
+        prompt = f"{context}\n\nUser Question: {query}"
+
+        try:
+            try:
+                import anthropic
+
+                client = anthropic.Anthropic(api_key=api_key)
+                with client.messages.stream(
+                    model=selected_model,
+                    max_tokens=1000,
+                    system=self.system_prompt,
+                    messages=[{"role": "user", "content": prompt}],
+                ) as stream:
+                    for text in stream.text_stream:
+                        yield text
+                return
+            except ImportError:
+                pass
+
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+            payload: dict[str, Any] = {
+                "model": selected_model,
+                "max_tokens": 1000,
+                "stream": True,
+                "system": self.system_prompt,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            with httpx.Client(timeout=60.0) as client:
+                with client.stream(
+                    "POST", "https://api.anthropic.com/v1/messages", headers=headers, json=payload
+                ) as res:
+                    res.raise_for_status()
+                    for line in res.iter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:].strip()
+                        try:
+                            chunk = json.loads(data_str)
+                            if chunk.get("type") == "content_block_delta":
+                                text = chunk.get("delta", {}).get("text", "")
+                                if text:
+                                    yield text
+                        except Exception:
+                            continue
+        except Exception as e:
+            yield f"[Claude API unavailable: {e!s}]. Falling back to offline engine:\n\n"
+            yield from self._stream_offline(query, context)
+
+    def _stream_gemini(
+        self,
+        query: str,
+        context: str,
+        api_key: str,
+        model: str | None = None,
+    ) -> Iterator[str]:
+        if not model or not model.strip():
+            yield (
+                "[No model specified for Google Gemini. Please connect and select an available model in Settings]. "
+                "Falling back to offline statistical engine:\n\n"
+            )
+            yield from self._stream_offline(query, context)
+            return
+
+        selected_model = model.strip().replace("models/", "")
+        prompt = f"{context}\n\nUser Question: {query}"
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{selected_model}:streamGenerateContent?key={api_key}&alt=sse"
+        )
+        payload: dict[str, Any] = {
+            "systemInstruction": {
+                "parts": [{"text": self.system_prompt}],
+            },
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt}],
+                }
+            ],
+        }
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                with client.stream("POST", url, json=payload) as res:
+                    res.raise_for_status()
+                    for line in res.iter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:].strip()
+                        try:
+                            chunk = json.loads(data_str)
+                            candidates = chunk.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                for part in parts:
+                                    text = part.get("text", "")
+                                    if text:
+                                        yield text
+                        except Exception:
+                            continue
+        except Exception as e:
+            yield f"[Google Gemini API unavailable: {e!s}]. Falling back to offline engine:\n\n"
+            yield from self._stream_offline(query, context)
 
     def _offline_statistical_interpret(self, query: str, context: str) -> str:
         """Intelligent offline statistical interpretation engine when no cloud LLM key is configured."""

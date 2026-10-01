@@ -1,6 +1,7 @@
 """Unit tests for SAES FastAPI REST endpoints."""
 
 import io
+import json
 
 from fastapi.testclient import TestClient
 
@@ -56,6 +57,23 @@ def test_chat_endpoint() -> None:
     data = res.json()
     assert "response" in data
     assert data["context_used"] is True
+
+
+def test_chat_stream_endpoint() -> None:
+    res = client.post(
+        "/api/v1/chat/stream",
+        json={
+            "query": "Why was this test chosen?",
+            "csv_data": SAMPLE_CSV,
+            "alpha": 0.05,
+            "provider": "offline",
+        },
+    )
+    assert res.status_code == 200
+    assert "token" in res.text
+    tokens = [json.loads(line)["token"] for line in res.text.strip().split("\n") if line.strip()]
+    full_text = "".join(tokens)
+    assert "Test Selection Rationale" in full_text
 
 
 def test_get_local_models_endpoint() -> None:

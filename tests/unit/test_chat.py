@@ -126,3 +126,40 @@ def test_stream_pull_ollama_model_empty_and_unreachable() -> None:
     assert "error" in chunks_unreachable[0]
 
 
+def test_statistical_chat_agent_stream_ask() -> None:
+    dataset = saes.load(io.StringIO(SAMPLE_CSV))
+    report = saes.analyze(dataset, generate_plots=False)
+
+    # 1. Offline streaming
+    agent = StatisticalChatAgent(report=report, dataset=dataset, provider="offline")
+    tokens = list(agent.stream_ask("Why was this statistical test chosen?"))
+    full_text = "".join(tokens)
+    assert len(tokens) > 1
+    assert "Test Selection Rationale" in full_text
+    assert len(agent.history) == 2
+    assert agent.history[-1]["content"] == full_text
+
+    # 2. Local AI fallback streaming
+    local_agent = StatisticalChatAgent(
+        report=report,
+        dataset=dataset,
+        provider="local",
+        model="llama3.2",
+        base_url="http://127.0.0.1:99999",
+    )
+    tokens_local = list(local_agent.stream_ask("Why Welch?"))
+    full_local = "".join(tokens_local)
+    assert "Local AI error" in full_local or "Test Selection Rationale" in full_local
+
+    # 3. OpenAI missing key fallback streaming
+    openai_agent = StatisticalChatAgent(
+        report=report,
+        dataset=dataset,
+        provider="openai",
+        api_key=None,
+    )
+    tokens_openai = list(openai_agent.stream_ask("Why Welch?"))
+    full_openai = "".join(tokens_openai)
+    assert "OpenAI API key missing" in full_openai
+
+
