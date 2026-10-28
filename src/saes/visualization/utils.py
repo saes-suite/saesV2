@@ -5,8 +5,13 @@ from typing import Any
 
 import plotly.express as px
 
-# Available palette names mapped to Plotly color lists
+# Available palette names mapped to Plotly color lists (includes scientific palettes matching SAES-UI)
 PALETTE_MAP: dict[str, list[str]] = {
+    "academic": ["#0284C7", "#6366F1", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6"],
+    "nature": ["#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F", "#8491B4"],
+    "viridis": ["#440154", "#3B528B", "#21908D", "#5DC963", "#FDE725"],
+    "colorblind": ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9"],
+    "set2": ["#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F"],
     "Plotly": px.colors.qualitative.Plotly,
     "Set1": px.colors.qualitative.Set1,
     "Set2": px.colors.qualitative.Set2,
@@ -19,6 +24,28 @@ PALETTE_MAP: dict[str, list[str]] = {
     "Plasma": px.colors.sequential.Plasma,
     "Turbo": px.colors.sequential.Turbo,
 }
+
+# Standard Scientific Paper Presets (width_px, height_px) matching SAES-UI
+PAPER_FORMAT_PRESETS: dict[str, tuple[int, int]] = {
+    "single-col": (680, 510),
+    "golden": (800, 495),
+    "double-col": (960, 540),
+    "square": (600, 600),
+    "compact": (920, 440),
+}
+
+
+def resolve_figure_dimensions(kwargs: Any, default_width: int = 800, default_height: int = 495) -> tuple[int, int]:
+    """Resolve (width, height) in pixels from paper_format preset or explicit width/height kwargs."""
+    paper_format = kwargs.get("paper_format")
+    if isinstance(paper_format, str) and paper_format in PAPER_FORMAT_PRESETS:
+        w_preset, h_preset = PAPER_FORMAT_PRESETS[paper_format]
+    else:
+        w_preset, h_preset = default_width, default_height
+
+    width = int(kwargs.get("width", w_preset))
+    height = int(kwargs.get("height", h_preset))
+    return width, height
 
 
 def to_hex_color(color_str: str) -> str:

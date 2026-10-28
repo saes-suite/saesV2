@@ -140,6 +140,100 @@ class StatisticalResult(BaseModel):
     group_summaries: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 
+class AlgorithmRankItem(BaseModel):
+    """Average Friedman rank and mean performance for a single algorithm."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    avg_rank: float
+    mean_value: float
+
+
+class CriticalDistanceResult(BaseModel):
+    """Result of Friedman omnibus test, Iman-Davenport F, and Nemenyi Critical Distance (CD)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    metric: str
+    scope: str
+    scope_label: str
+    metrics_list: list[str] = Field(default_factory=list)
+    instances_list: list[str] = Field(default_factory=list)
+    metrics_label: str = ""
+    instances_label: str = ""
+    params_label: str = ""
+    alpha: float
+    k: int
+    n_blocks: int
+    cd: float
+    friedman_stat: float
+    friedman_p_value: float
+    iman_davenport_f: float
+    iman_davenport_p_value: float
+    maximize: bool
+    ranks: list[AlgorithmRankItem] = Field(default_factory=list)
+    cliques: list[tuple[float, float]] = Field(default_factory=list)
+
+
+class BayesianPosteriorItem(BaseModel):
+    """Posterior rank distribution and ROPE probabilities for a single algorithm."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    mean_rank: float
+    median_rank: float
+    ci_lower: float
+    ci_upper: float
+    q25: float
+    q75: float
+    prob_best: float
+    prob_better_than_ref: float
+    prob_rope_with_ref: float
+    samples: list[float] = Field(default_factory=list)
+
+
+class BayesianRankResult(BaseModel):
+    """Result of Bayesian Non-Parametric Signed-Rank / Sign-Test Simplex (ROPE) & Posterior Ranking test."""
+
+    model_config = ConfigDict(frozen=True)
+
+    metric: str
+    scope: str
+    scope_label: str
+    bayesian_method: str = "signed-rank"
+    metrics_list: list[str] = Field(default_factory=list)
+    instances_list: list[str] = Field(default_factory=list)
+    metrics_label: str = ""
+    instances_label: str = ""
+    params_label: str = ""
+    k: int
+    n_blocks: int
+    rope_percent: float
+    reference_algo: str
+    maximize: bool
+    algo_a: str = ""
+    algo_b: str = ""
+    algorithms: list[str] = Field(default_factory=list)
+    p_left: float = 0.0
+    p_rope: float = 0.0
+    p_right: float = 0.0
+    label_left: str = ""
+    label_rope: str = ""
+    label_right: str = ""
+    points_x: list[float] = Field(default_factory=list)
+    points_y: list[float] = Field(default_factory=list)
+    points_density: list[float] = Field(default_factory=list)
+    points_p_left: list[float] = Field(default_factory=list)
+    points_p_rope: list[float] = Field(default_factory=list)
+    points_p_right: list[float] = Field(default_factory=list)
+    triangle_x: list[float] = Field(default_factory=list)
+    triangle_y: list[float] = Field(default_factory=list)
+    boundary_lines: list[tuple[float, float, float, float]] = Field(default_factory=list)
+    items: list[BayesianPosteriorItem] = Field(default_factory=list)
+
+
 class Dataset:
     """Represents a validated SAES dataset wrapping standard algorithm evaluation records."""
 

@@ -7,6 +7,7 @@ from scipy import stats
 from saes.stats.anova import OneWayANOVA, WelchANOVA
 from saes.stats.assumptions import HomogeneityChecker, NormalityChecker
 from saes.stats.decision import TestDecisionEngine
+from saes.stats.ranking import BayesianRankingTest, FriedmanNemenyiTest
 from saes.stats.ttest import IndependentTTest, PairedTTest, WelchTTest
 
 
@@ -139,3 +140,93 @@ def test_decision_engine_selection() -> None:
     g3 = np.random.normal(loc=0.0, scale=1.0, size=20)
     test_anova = engine.select_test({"A": g1, "B": g2, "C": g3})
     assert isinstance(test_anova, OneWayANOVA)
+
+
+def test_friedman_nemenyi_and_bayesian_ranking() -> None:
+    import pandas as pd
+
+    rows = []
+    for inst_idx in range(10):
+        inst = f"ZDT{inst_idx + 1}"
+        for run_id in range(5):
+            rows.append(
+                {
+                    "algorithm": "AlgoBest",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": 0.90,
+                    "maximize": True,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "AlgoMid",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": 0.75,
+                    "maximize": True,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "AlgoWorst",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": 0.50,
+                    "maximize": True,
+                }
+            )
+
+    df = pd.DataFrame(rows)
+    cd_res = FriedmanNemenyiTest().run(df=df, metric="HV", alpha=0.05)
+    assert cd_res.k == 3
+    assert cd_res.n_blocks == 10
+    assert cd_res.ranks[0].algorithm == "AlgoBest"
+    assert pytest.approx(cd_res.ranks[0].avg_rank, abs=1e-5) == 1.0
+    assert pytest.approx(cd_res.ranks[2].avg_rank, abs=1e-5) == 3.0
+    assert cd_res.friedman_stat > 0
+    assert cd_res.cd > 0
+
+    bayes_res = BayesianRankingTest().run(
+        df=df, metric="HV", rope_percent=1.0, num_samples=300, algo_a="AlgoMid", algo_b="AlgoBest"
+    )
+    assert bayes_res.k == 3
+    assert bayes_res.reference_algo == "AlgoBest"
+    assert bayes_res.items[0].algorithm == "AlgoBest"
+    assert bayes_res.items[0].prob_best == 1.0
+    assert bayes_res.algo_a == "AlgoMid"
+    assert bayes_res.algo_b == "AlgoBest"
+    assert pytest.approx(bayes_res.p_left + bayes_res.p_rope + bayes_res.p_right, abs=1e-2) == 1.0
+    assert bayes_res.p_right > bayes_res.p_left
+    assert len(bayes_res.points_x) == 300
+    assert len(bayes_res.points_y) == 300
+    assert len(bayes_res.points_density) == 300
+    assert len(bayes_res.triangle_x) == 4
+    assert len(bayes_res.boundary_lines) == 3
+    assert bayes_res.label_rope.startswith("p(rope) = ")
+    assert bayes_res.label_left.startswith("p(AlgoMid) = ")
+    assert bayes_res.label_right.startswith("p(AlgoBest) = ")
+    assert bayes_res.metrics_list == ["HV"]
+    assert "Metric: HV" in bayes_res.metrics_label
+    assert "ROPE = ±1.0%" in bayes_res.params_label
+    assert bayes_res.bayesian_method == "signed-rank"
+
+    bayes_sign_res = BayesianRankingTest().run(
+        df=df,
+        metric="HV",
+        rope_percent=1.0,
+        num_samples=300,
+        algo_a="AlgoMid",
+        algo_b="AlgoBest",
+        method="sign",
+    )
+    assert bayes_sign_res.bayesian_method == "sign"
+    assert "Bayesian Sign:" in bayes_sign_res.params_label
+    assert bayes_sign_res.p_right > bayes_sign_res.p_left
+
+    cd_all = FriedmanNemenyiTest().run(df=df, metric="all-metrics", alpha=0.05)
+    assert cd_all.metrics_list == ["HV"]
+    assert "CD =" in cd_all.params_label

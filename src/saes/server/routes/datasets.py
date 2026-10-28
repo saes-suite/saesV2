@@ -12,6 +12,7 @@ from saes.server.schemas import (
     DatasetDetailSchema,
     DatasetItemSchema,
     DatasetUpdateSchema,
+    RankingAnalysisResponse,
     ValidationResponse,
 )
 from saes.server.storage import get_datasets_dir
@@ -189,12 +190,74 @@ def analyze_dataset_from_path(
                     effect_size_magnitude=res.effect_size.magnitude if res.effect_size else None,
                     assumptions=list(res.assumptions),
                     warnings=list(res.warnings),
+                    interpretation=res.interpretation,
+                    group_summaries=res.group_summaries,
                 )
             )
 
         return AnalysisResponse(cells_count=len(results), results=results)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Statistical analysis error: {e!s}") from e
+
+
+@router.post("/{filename}/ranking", response_model=RankingAnalysisResponse)
+def ranking_dataset_from_path(
+    filename: str,
+    metric: Annotated[str, Form()],
+    alpha: Annotated[float, Form()] = 0.05,
+    scope: Annotated[str, Form()] = "all-instances",
+    instance: Annotated[str | None, Form()] = None,
+    rope_percent: Annotated[float, Form()] = 1.0,
+    algo_a: Annotated[str | None, Form()] = None,
+    algo_b: Annotated[str | None, Form()] = None,
+    bayesian_method: Annotated[str, Form()] = "signed-rank",
+) -> RankingAnalysisResponse:
+    """Compute Friedman + Nemenyi CD and Bayesian Simplex ROPE tests on a saved dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        cd_res = saes.statistics.friedman_nemenyi(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            scope=scope,
+            instance=instance,
+        )
+        bayes_sign_res = saes.statistics.bayesian_sign(
+            dataset=dataset,
+            metric=metric,
+            scope=scope,
+            instance=instance,
+            rope_percent=rope_percent,
+            algo_a=algo_a,
+            algo_b=algo_b,
+        )
+        bayes_sr_res = saes.statistics.bayesian_signed_rank(
+            dataset=dataset,
+            metric=metric,
+            scope=scope,
+            instance=instance,
+            rope_percent=rope_percent,
+            algo_a=algo_a,
+            algo_b=algo_b,
+        )
+        active_bayes = (
+            bayes_sign_res
+            if bayesian_method.strip().lower() in {"sign", "bayesian-sign", "sign-test"}
+            else bayes_sr_res
+        )
+        return RankingAnalysisResponse(
+            critical_distance=cd_res,
+            bayesian_ranking=active_bayes,
+            bayesian_sign=bayes_sign_res,
+            bayesian_signed_rank=bayes_sr_res,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Ranking analysis error: {e!s}") from e
 
 
 @router.delete("/{filename}")

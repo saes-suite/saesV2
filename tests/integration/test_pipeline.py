@@ -51,3 +51,31 @@ def test_statistics_namespace_programmatic_api() -> None:
 
     anova_res = saes.statistics.anova_oneway(groups_np)
     assert anova_res.is_significant is True
+
+
+def test_library_plot_and_ranking_reproducibility() -> None:
+    csv_data = """algorithm,instance,metric,run_id,value,maximize
+NSGAII,ZDT1,HV,0,0.662145,True
+NSGAII,ZDT1,HV,1,0.661890,True
+NSGAII,ZDT2,HV,0,0.542012,True
+NSGAII,ZDT2,HV,1,0.541900,True
+MOEAD,ZDT1,HV,0,0.685421,True
+MOEAD,ZDT1,HV,1,0.685100,True
+MOEAD,ZDT2,HV,0,0.595900,True
+MOEAD,ZDT2,HV,1,0.595100,True
+"""
+    dataset = saes.load(io.StringIO(csv_data))
+
+    cd_res = saes.statistics.friedman_nemenyi(dataset, metric="HV", alpha=0.05)
+    assert cd_res.ranks[0].algorithm == "MOEAD"
+
+    bayes_res = saes.statistics.bayesian_ranking(dataset, metric="HV", rope_percent=1.0)
+    assert bayes_res.reference_algo == "MOEAD"
+
+    fig_cd = saes.plot(dataset, plot_type="critical-distance", metric="HV", paper_format="golden", interactive=True)
+    assert fig_cd.layout.width == 800
+    assert fig_cd.layout.height == 495
+
+    fig_bayes = saes.plot(dataset, plot_type="bayesian-rank", metric="HV", paper_format="single-col", interactive=True)
+    assert fig_bayes.layout.width == 680
+    assert fig_bayes.layout.height == 510

@@ -7,7 +7,9 @@ from matplotlib.figure import Figure
 
 from saes.domain.exceptions import VisualizationError
 from saes.visualization.barplot import BarPlotGenerator
+from saes.visualization.bayesianplot import BayesianRankPlotGenerator
 from saes.visualization.boxplot import BoxplotGenerator
+from saes.visualization.cdplot import CriticalDistancePlotGenerator
 from saes.visualization.ecdfplot import ECDFPlotGenerator
 from saes.visualization.lineplot import LinePlotGenerator
 from saes.visualization.registry import PlotterRegistry
@@ -25,6 +27,7 @@ def sample_df() -> pd.DataFrame:
             "metric": ["HV", "HV", "HV", "HV"],
             "run_id": [0, 1, 0, 1],
             "value": [0.65, 0.67, 0.68, 0.69],
+            "maximize": [True, True, True, True],
         }
     )
 
@@ -96,6 +99,28 @@ def test_scatterplot_generator_success(sample_df: pd.DataFrame) -> None:
     assert isinstance(fig_plotly, go.Figure)
 
 
+def test_critical_distance_plot_generator_success(sample_df: pd.DataFrame) -> None:
+    generator = CriticalDistancePlotGenerator()
+    assert generator.name == "Critical Distance (CD) Diagram"
+
+    fig_mpl = generator.plot(sample_df, metric="HV", paper_format="golden")
+    assert isinstance(fig_mpl, Figure)
+
+    fig_plotly = generator.plot_interactive(sample_df, metric="HV", paper_format="single-col")
+    assert isinstance(fig_plotly, go.Figure)
+
+
+def test_bayesian_rank_plot_generator_success(sample_df: pd.DataFrame) -> None:
+    generator = BayesianRankPlotGenerator()
+    assert generator.name == "Bayesian Posterior Rank Plot"
+
+    fig_mpl = generator.plot(sample_df, metric="HV", rope_percent=1.0)
+    assert isinstance(fig_mpl, Figure)
+
+    fig_plotly = generator.plot_interactive(sample_df, metric="HV", paper_format="double-col")
+    assert isinstance(fig_plotly, go.Figure)
+
+
 def test_missing_columns_raise_visualization_error() -> None:
     invalid_df = pd.DataFrame({"invalid_col": [1, 2, 3]})
 
@@ -109,10 +134,19 @@ def test_missing_columns_raise_visualization_error() -> None:
 
 def test_plotter_registry() -> None:
     available = PlotterRegistry.list_available()
-    expected_plotters = {"boxplot", "violin", "barplot", "lineplot", "ecdf", "scatter"}
+    expected_plotters = {
+        "boxplot",
+        "violin",
+        "critical-distance",
+        "bayesian-rank",
+        "barplot",
+        "lineplot",
+        "ecdf",
+        "scatter",
+    }
     for p in expected_plotters:
         assert p in available
-    assert len(available) == 6
+    assert len(available) == 8
 
     boxplot_instance = PlotterRegistry.get("boxplot")
     assert isinstance(boxplot_instance, BoxplotGenerator)

@@ -1,6 +1,14 @@
 """SAES: Stochastic Algorithm Evaluation Suite."""
 
-from saes.api import analyze, load, statistics, validate
+from typing import Any
+
+from saes.api import (
+    analyze,
+    load,
+    plot,
+    statistics,
+    validate,
+)
 from saes.domain.exceptions import (
     ConfigurationError,
     InfrastructureError,
@@ -10,14 +18,35 @@ from saes.domain.exceptions import (
     ValidationError,
     VisualizationError,
 )
-from saes.domain.models import Dataset, StatisticalResult, ValidationReport
+from saes.domain.models import (
+    AlgorithmRankItem,
+    BayesianPosteriorItem,
+    BayesianRankResult,
+    CriticalDistanceResult,
+    Dataset,
+    StatisticalResult,
+    ValidationReport,
+)
 
 __version__ = "0.1.0"
+
+
+def __getattr__(name: str) -> Any:
+    if name == "PlotterRegistry":
+        from saes.visualization.registry import PlotterRegistry
+
+        return PlotterRegistry
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "Dataset",
     "StatisticalResult",
     "ValidationReport",
+    "AlgorithmRankItem",
+    "CriticalDistanceResult",
+    "BayesianPosteriorItem",
+    "BayesianRankResult",
+    "PlotterRegistry",
     "SAESError",
     "InputError",
     "ValidationError",
@@ -28,5 +57,6 @@ __all__ = [
     "load",
     "validate",
     "analyze",
+    "plot",
     "statistics",
 ]

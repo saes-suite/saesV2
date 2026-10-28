@@ -5,7 +5,9 @@ from typing import Any
 from saes.domain.exceptions import VisualizationError
 from saes.visualization.barplot import BarPlotGenerator
 from saes.visualization.base import Plotter
+from saes.visualization.bayesianplot import BayesianRankPlotGenerator
 from saes.visualization.boxplot import BoxplotGenerator
+from saes.visualization.cdplot import CriticalDistancePlotGenerator
 from saes.visualization.ecdfplot import ECDFPlotGenerator
 from saes.visualization.lineplot import LinePlotGenerator
 from saes.visualization.scatterplot import ScatterPlotGenerator
@@ -18,6 +20,8 @@ class PlotterRegistry:
     _registry: dict[str, type[Plotter]] = {
         "boxplot": BoxplotGenerator,
         "violin": ViolinPlotGenerator,
+        "critical-distance": CriticalDistancePlotGenerator,
+        "bayesian-rank": BayesianRankPlotGenerator,
         "barplot": BarPlotGenerator,
         "lineplot": LinePlotGenerator,
         "ecdf": ECDFPlotGenerator,
