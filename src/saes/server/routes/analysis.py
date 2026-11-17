@@ -10,7 +10,10 @@ from saes.server.schemas import (
     AnalysisResponse,
     CellAnalysisSchema,
     DataExplorationResponse,
+    PerformanceProfilesResponse,
+    PowerAnalysisResponse,
     RankingAnalysisResponse,
+    ReproducibilityResponse,
     StatisticalTableResponse,
     ValidationResponse,
 )
@@ -314,3 +317,71 @@ async def export_explore_csv(
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Observation export error: {e!s}") from e
+
+
+@router.post("/profiles", response_model=PerformanceProfilesResponse)
+async def compute_profiles_endpoint(
+    file: Annotated[UploadFile, File(...)],
+    metric: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+    max_tau: Annotated[float | None, Form()] = None,
+) -> PerformanceProfilesResponse:
+    """Compute Dolan-Moré performance profiles and global Win/Tie/Loss meta-ranking from uploaded CSV."""
+    content = await file.read()
+    try:
+        dataset = saes.load(io.BytesIO(content))
+        return saes.compute_performance_profiles(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            max_tau=max_tau,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Performance profile error: {e!s}") from e
+
+
+@router.post("/power", response_model=PowerAnalysisResponse)
+async def compute_power_endpoint(
+    file: Annotated[UploadFile, File(...)],
+    metric: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+    target_power: Annotated[float, Form()] = 0.80,
+    target_effect_size: Annotated[float, Form()] = 0.50,
+) -> PowerAnalysisResponse:
+    """Compute statistical power analysis, sample size recommendations, and post-hoc audit."""
+    content = await file.read()
+    try:
+        dataset = saes.load(io.BytesIO(content))
+        return saes.analyze_statistical_power(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            target_power=target_power,
+            target_effect_size=target_effect_size,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Power analysis error: {e!s}") from e
+
+
+@router.post("/reproducibility", response_model=ReproducibilityResponse)
+async def generate_reproducibility_endpoint(
+    file: Annotated[UploadFile, File(...)],
+    metric: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+    filename: Annotated[str, Form()] = "dataset.csv",
+) -> ReproducibilityResponse:
+    """Generate reproducible standalone Python script, Jupyter notebook, and FAIR manifest."""
+    content = await file.read()
+    try:
+        raw_text = content.decode("utf-8", errors="replace")
+        dataset = saes.load(io.BytesIO(content))
+        return saes.generate_reproducibility_artifacts(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            filename=filename,
+            raw_csv=raw_text,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Reproducibility error: {e!s}") from e
+

@@ -11,9 +11,18 @@ from saes.domain.models import (
     CriticalDistanceResult,
     DataExplorationResult,
     Dataset,
+    PerformanceProfilesResult,
+    PowerAnalysisResult,
+    ReproducibilityResult,
     StatisticalResult,
     StatisticalTableResult,
     ValidationReport,
+)
+from saes.reports.reproducibility import (
+    generate_environment_manifest,
+    generate_jupyter_notebook,
+    generate_python_script,
+    generate_reproducibility_artifacts,
 )
 from saes.stats.anova import OneWayANOVA, WelchANOVA
 from saes.stats.assumptions import HomogeneityChecker, NormalityChecker
@@ -26,6 +35,13 @@ from saes.stats.nonparametric import (
     compute_cliffs_delta,
     compute_vargha_delaney_a12,
 )
+from saes.stats.power import (
+    analyze_statistical_power,
+    calculate_statistical_power,
+    estimate_required_sample_size,
+    generate_power_curves,
+)
+from saes.stats.profiles import compute_performance_profiles
 from saes.stats.ranking import BayesianRankingTest, FriedmanNemenyiTest
 from saes.stats.tables import StatisticalTableGenerator, export_statistical_table
 from saes.stats.ttest import IndependentTTest, PairedTTest, WelchTTest
@@ -245,6 +261,57 @@ def export_exploration(
     return file_bytes
 
 
+def profiles(
+    dataset: Dataset,
+    metric: str | None = None,
+    alpha: float = 0.05,
+    max_tau: float | None = None,
+    num_tau_points: int = 60,
+) -> PerformanceProfilesResult:
+    """Compute Dolan-Moré performance profiles and global Win/Tie/Loss meta-ranking."""
+    return compute_performance_profiles(
+        dataset=dataset,
+        metric=metric,
+        alpha=alpha,
+        max_tau=max_tau,
+        num_tau_points=num_tau_points,
+    )
+
+
+def power(
+    dataset: Dataset,
+    metric: str | None = None,
+    alpha: float = 0.05,
+    target_power: float = 0.80,
+    target_effect_size: float = 0.50,
+) -> PowerAnalysisResult:
+    """Run full statistical power analysis, sample size planning, and post-hoc audit."""
+    return analyze_statistical_power(
+        dataset=dataset,
+        metric=metric,
+        alpha=alpha,
+        target_power=target_power,
+        target_effect_size=target_effect_size,
+    )
+
+
+def reproducibility(
+    dataset: Dataset,
+    metric: str | None = None,
+    alpha: float = 0.05,
+    filename: str = "dataset.csv",
+    raw_csv: str | None = None,
+) -> ReproducibilityResult:
+    """Generate standalone reproducibility code artifacts (Python script, Jupyter Notebook, manifest)."""
+    return generate_reproducibility_artifacts(
+        dataset=dataset,
+        metric=metric,
+        alpha=alpha,
+        filename=filename,
+        raw_csv=raw_csv,
+    )
+
+
 # Low-level programmatic statistics sub-namespace
 class StatisticsNamespace:
     """Programmatic statistical test API namespace (saes.statistics.*)."""
@@ -450,3 +517,28 @@ class StatisticsNamespace:
 
 
 statistics = StatisticsNamespace()
+
+__all__ = [
+    "load",
+    "validate",
+    "analyze",
+    "plot",
+    "generate_table",
+    "export_table",
+    "explore",
+    "export_exploration",
+    "profiles",
+    "power",
+    "reproducibility",
+    "compute_performance_profiles",
+    "analyze_statistical_power",
+    "calculate_statistical_power",
+    "estimate_required_sample_size",
+    "generate_power_curves",
+    "generate_reproducibility_artifacts",
+    "generate_python_script",
+    "generate_jupyter_notebook",
+    "generate_environment_manifest",
+    "statistics",
+]
+

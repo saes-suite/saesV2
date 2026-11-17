@@ -9,6 +9,9 @@ from saes.domain.models import (
     BayesianRankResult,
     CriticalDistanceResult,
     DataExplorationResult,
+    PerformanceProfilesResult,
+    PowerAnalysisResult,
+    ReproducibilityResult,
     StatisticalTableResult,
     ValidationIssue,
 )
@@ -100,3 +103,7 @@ class RankingAnalysisResponse(BaseModel):
 
 StatisticalTableResponse = StatisticalTableResult
 DataExplorationResponse = DataExplorationResult
+PerformanceProfilesResponse = PerformanceProfilesResult
+PowerAnalysisResponse = PowerAnalysisResult
+ReproducibilityResponse = ReproducibilityResult
+

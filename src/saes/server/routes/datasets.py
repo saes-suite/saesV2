@@ -13,7 +13,10 @@ from saes.server.schemas import (
     DatasetDetailSchema,
     DatasetItemSchema,
     DatasetUpdateSchema,
+    PerformanceProfilesResponse,
+    PowerAnalysisResponse,
     RankingAnalysisResponse,
+    ReproducibilityResponse,
     StatisticalTableResponse,
     ValidationResponse,
 )
@@ -625,6 +628,88 @@ def export_explore_dataset(
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Observation export error: {e!s}") from e
+
+
+@router.get("/{filename}/profiles", response_model=PerformanceProfilesResponse)
+@router.post("/{filename}/profiles", response_model=PerformanceProfilesResponse)
+def get_dataset_profiles(
+    filename: str,
+    metric: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+    max_tau: Annotated[float | None, Query()] = None,
+) -> PerformanceProfilesResponse:
+    """Compute Dolan-Moré performance profiles and global Win/Tie/Loss matrix for a stored dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        return saes.compute_performance_profiles(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            max_tau=max_tau,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Performance profile error: {e!s}") from e
+
+
+@router.get("/{filename}/power", response_model=PowerAnalysisResponse)
+@router.post("/{filename}/power", response_model=PowerAnalysisResponse)
+def get_dataset_power(
+    filename: str,
+    metric: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+    target_power: Annotated[float, Query()] = 0.80,
+    target_effect_size: Annotated[float, Query()] = 0.50,
+) -> PowerAnalysisResponse:
+    """Compute statistical power analysis and experimental sample size planning for a stored dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        return saes.analyze_statistical_power(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            target_power=target_power,
+            target_effect_size=target_effect_size,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Power analysis error: {e!s}") from e
+
+
+@router.get("/{filename}/reproducibility", response_model=ReproducibilityResponse)
+@router.post("/{filename}/reproducibility", response_model=ReproducibilityResponse)
+def get_dataset_reproducibility(
+    filename: str,
+    metric: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+) -> ReproducibilityResponse:
+    """Generate reproducible Python script, Jupyter notebook, and FAIR manifest for a stored dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
+            raw_text = f.read()
+        dataset = saes.load(file_path)
+        return saes.generate_reproducibility_artifacts(
+            dataset=dataset,
+            metric=metric,
+            alpha=alpha,
+            filename=safe_name,
+            raw_csv=raw_text,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Reproducibility error: {e!s}") from e
 
 
 @router.delete("/{filename}")

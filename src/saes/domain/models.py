@@ -580,3 +580,144 @@ class Dataset:
 
         adapter = TypeAdapter(list[BenchmarkRecord])
         return adapter.validate_python(self.df.to_dict(orient="records"))
+
+
+
+class AlgorithmProfileCurve(BaseModel):
+    """Performance profile curve points for an individual algorithm."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    tau_values: list[float] = Field(default_factory=list)
+    rho_values: list[float] = Field(default_factory=list)
+    efficiency: float  # rho(1.0)
+    robustness: float  # rho(tau_max)
+
+
+class WinTieLossCell(BaseModel):
+    """Cell in the global Win/Tie/Loss comparison matrix."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algo_row: str
+    algo_col: str
+    wins: int
+    ties: int
+    losses: int
+    net: int
+
+
+class GlobalMetaRankingItem(BaseModel):
+    """Aggregate benchmark meta-ranking item across all instances."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rank: int
+    algorithm: str
+    efficiency: float
+    robustness: float
+    total_wins: int
+    total_ties: int
+    total_losses: int
+    net_score: int
+    copeland_score: float
+
+
+class PerformanceProfilesResult(BaseModel):
+    """Complete result of Dolan-Moré performance profiles and global meta-benchmarking."""
+
+    model_config = ConfigDict(frozen=True)
+
+    metric: str
+    maximize: bool
+    alpha: float
+    tau_values: list[float] = Field(default_factory=list)
+    curves: list[AlgorithmProfileCurve] = Field(default_factory=list)
+    wtl_matrix: list[list[WinTieLossCell]] = Field(default_factory=list)
+    meta_rankings: list[GlobalMetaRankingItem] = Field(default_factory=list)
+
+
+class PowerCurveSeries(BaseModel):
+    """Sample size vs power curve series for a specific effect size."""
+
+    model_config = ConfigDict(frozen=True)
+
+    effect_size_label: str
+    effect_size_value: float
+    sample_sizes: list[int] = Field(default_factory=list)
+    power_values: list[float] = Field(default_factory=list)
+
+
+class SampleSizeRecommendation(BaseModel):
+    """A priori sample size recommendation for a target power and effect size."""
+
+    model_config = ConfigDict(frozen=True)
+
+    target_power: float
+    alpha: float
+    effect_size: float
+    effect_size_label: str
+    recommended_n_independent: int
+    recommended_n_paired: int
+    recommended_n_nonparametric: int
+
+
+class PostHocPowerItem(BaseModel):
+    """Post-hoc statistical power evaluation for a specific algorithm comparison."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algo_1: str
+    algo_2: str
+    instance: str
+    metric: str
+    n_samples: int
+    cohens_d: float
+    a12: float
+    achieved_power: float
+    power_status: str  # Optimal (>=0.8), Adequate (0.7-0.8), Underpowered (<0.7)
+    is_significant: bool
+    recommendation: str
+
+
+class PowerAnalysisResult(BaseModel):
+    """Complete statistical power analysis and experimental sample size planning."""
+
+    model_config = ConfigDict(frozen=True)
+
+    alpha: float
+    target_power: float
+    target_effect_size: float
+    sample_size_recommendations: list[SampleSizeRecommendation] = Field(default_factory=list)
+    power_curves: list[PowerCurveSeries] = Field(default_factory=list)
+    post_hoc_audit: list[PostHocPowerItem] = Field(default_factory=list)
+    overall_power_health: str
+
+
+class EnvironmentManifest(BaseModel):
+    """Reproducibility metadata and execution environment manifest."""
+
+    model_config = ConfigDict(frozen=True)
+
+    python_version: str
+    platform: str
+    saes_version: str
+    scipy_version: str
+    numpy_version: str
+    pandas_version: str
+    dataset_checksum_sha256: str
+    timestamp: str
+    row_count: int
+    runs_per_cell: int
+
+
+class ReproducibilityResult(BaseModel):
+    """Generated standalone reproducible code artifacts and environment specification."""
+
+    model_config = ConfigDict(frozen=True)
+
+    python_script: str
+    jupyter_notebook_json: str
+    manifest: EnvironmentManifest
+

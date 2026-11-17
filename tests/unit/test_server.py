@@ -166,3 +166,28 @@ def test_tables_and_explore_endpoints() -> None:
         )
         assert res_obs_exp.status_code == 200
         assert len(res_obs_exp.content) > 20
+
+    # Test Profiles endpoint
+    prof_file = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_prof = client.post("/api/v1/profiles", files={"file": ("data.csv", prof_file, "text/csv")})
+    assert res_prof.status_code == 200
+    prof_data = res_prof.json()
+    assert len(prof_data["curves"]) == 2
+    assert len(prof_data["meta_rankings"]) == 2
+
+    # Test Power endpoint
+    power_file = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_power = client.post("/api/v1/power", files={"file": ("data.csv", power_file, "text/csv")})
+    assert res_power.status_code == 200
+    power_data = res_power.json()
+    assert len(power_data["sample_size_recommendations"]) >= 3
+    assert len(power_data["power_curves"]) >= 3
+
+    # Test Reproducibility endpoint
+    rep_file = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_rep = client.post("/api/v1/reproducibility", files={"file": ("data.csv", rep_file, "text/csv")})
+    assert res_rep.status_code == 200
+    rep_data = res_rep.json()
+    assert "import saes" in rep_data["python_script"]
+    assert "nbformat" in rep_data["jupyter_notebook_json"]
+
