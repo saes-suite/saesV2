@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "saes"
+name = "saesV2"
 version = "0.1.0"
 description = "Stochastic Algorithm Evaluation Suite - Scientific Python library for statistical benchmarking"
 readme = "README.md"
@@ -52,14 +52,14 @@ dev = [
     "saes-ai>=0.1.0",
 ]
 all = [
-    "saes[viz,api,ai]",
+    "saesV2[viz,api,ai]",
 ]
 
 [project.scripts]
-saes-api = "saes.server.app:main"
+saes-api = "saesV2.server.app:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/saes"]
+packages = ["src/saesV2"]
 
 [tool.uv.sources]
 saes-ai = { path = "../saes-ai", editable = true }
@@ -70,7 +70,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N"]
-ignore = []
+ignore = ["N999"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -81,4 +81,4 @@ files = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-v --cov=saes --cov-report=term-missing"
+addopts = "-v --cov=saesV2 --cov-report=term-missing"

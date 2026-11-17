@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from saes.domain.exceptions import ValidationError
-from saes.validation.validator import DatasetValidator
+from saesV2.domain.exceptions import ValidationError
+from saesV2.validation.validator import DatasetValidator
 
 
 def test_validator_valid_dataset() -> None:
@@ -98,7 +98,7 @@ def test_validator_strict_types() -> None:
 
 
 def test_benchmark_record_pydantic() -> None:
-    from saes.domain.models import BenchmarkRecord, Dataset
+    from saesV2.domain.models import BenchmarkRecord, Dataset
 
     record = BenchmarkRecord(
         algorithm="NSGAII",

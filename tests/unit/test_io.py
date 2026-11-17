@@ -4,8 +4,8 @@ import io
 
 import pytest
 
-from saes.domain.exceptions import InputError
-from saes.io.csv_reader import CSVReader
+from saesV2.domain.exceptions import InputError
+from saesV2.io.csv_reader import CSVReader
 
 
 def test_csv_reader_valid_data() -> None:

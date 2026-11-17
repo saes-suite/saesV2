@@ -15,7 +15,7 @@ install: ## Install saes dependencies with all extras via uv
 
 # ── Run ──────────────────────────────────────────────────────
 start-api: ## Launch FastAPI REST server
-	uv run uvicorn saes.server.app:app --reload --port 8000
+	uv run uvicorn saesV2.server.app:app --reload --port 8000
 
 build: ## Build wheel and sdist packages
 	uv build

@@ -4,7 +4,7 @@ import io
 
 from fastapi.testclient import TestClient
 
-from saes.server.app import app
+from saesV2.server.app import app
 
 client = TestClient(app)
 
@@ -188,6 +188,6 @@ def test_tables_and_explore_endpoints() -> None:
     res_rep = client.post("/api/v1/reproducibility", files={"file": ("data.csv", rep_file, "text/csv")})
     assert res_rep.status_code == 200
     rep_data = res_rep.json()
-    assert "import saes" in rep_data["python_script"]
+    assert "import saesV2" in rep_data["python_script"]
     assert "nbformat" in rep_data["jupyter_notebook_json"]
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-import saes
+import saesV2
 
 
 def test_real_dataset_fixture_end_to_end() -> None:
@@ -12,19 +12,19 @@ def test_real_dataset_fixture_end_to_end() -> None:
     assert fixture_path.exists(), f"Fixture file not found at {fixture_path}"
 
     # 1. Load dataset
-    dataset = saes.load(fixture_path)
+    dataset = saesV2.load(fixture_path)
     assert len(dataset.df) == 14700
     assert len(dataset.algorithms) == 7
     assert len(dataset.instances) == 12
     assert len(dataset.metrics) == 7
 
     # 2. Validate dataset
-    val_report = saes.validate(dataset)
+    val_report = saesV2.validate(dataset)
     assert val_report.is_valid
     assert len(val_report.errors) == 0
 
     # 3. Analyze all 84 experimental cells
-    analysis_report = saes.analyze(dataset, alpha=0.05, generate_plots=True)
+    analysis_report = saesV2.analyze(dataset, alpha=0.05, generate_plots=True)
     assert len(analysis_report.cell_analyses) == 84
 
     # 4. Verify numerical stability (no NaN statistics or p-values)

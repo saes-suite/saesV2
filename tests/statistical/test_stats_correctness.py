@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from saes.stats.anova import OneWayANOVA, WelchANOVA
-from saes.stats.assumptions import HomogeneityChecker, NormalityChecker
-from saes.stats.decision import TestDecisionEngine
-from saes.stats.ranking import BayesianRankingTest, FriedmanNemenyiTest
-from saes.stats.ttest import IndependentTTest, PairedTTest, WelchTTest
+from saesV2.stats.anova import OneWayANOVA, WelchANOVA
+from saesV2.stats.assumptions import HomogeneityChecker, NormalityChecker
+from saesV2.stats.decision import TestDecisionEngine
+from saesV2.stats.ranking import BayesianRankingTest, FriedmanNemenyiTest
+from saesV2.stats.ttest import IndependentTTest, PairedTTest, WelchTTest
 
 
 def test_independent_ttest_scipy_benchmark() -> None:
@@ -233,7 +233,7 @@ def test_friedman_nemenyi_and_bayesian_ranking() -> None:
 
 
 def test_nonparametric_tests_and_effect_sizes() -> None:
-    import saes
+    import saesV2
 
     np.random.seed(123)
     g1 = np.random.exponential(scale=2.0, size=25) + 5.0
@@ -241,7 +241,7 @@ def test_nonparametric_tests_and_effect_sizes() -> None:
     g3 = np.random.exponential(scale=2.0, size=25) + 0.2
 
     # Wilcoxon Signed-Rank
-    w_res = saes.statistics.wilcoxon({"AlgA": g1, "AlgB": g2}, alpha=0.05)
+    w_res = saesV2.statistics.wilcoxon({"AlgA": g1, "AlgB": g2}, alpha=0.05)
     assert w_res.test_name == "Wilcoxon Signed-Rank Test"
     assert w_res.is_significant is True
     assert w_res.effect_size is not None
@@ -249,33 +249,33 @@ def test_nonparametric_tests_and_effect_sizes() -> None:
     assert w_res.effect_size.value > 0.7
 
     # Mann-Whitney U
-    mw_res = saes.statistics.mann_whitney({"AlgA": g1, "AlgB": g2}, alpha=0.05)
+    mw_res = saesV2.statistics.mann_whitney({"AlgA": g1, "AlgB": g2}, alpha=0.05)
     assert "Mann-Whitney U" in mw_res.test_name
     assert mw_res.is_significant is True
     assert mw_res.effect_size is not None
     assert mw_res.effect_size.value > 0.7
 
     # Kruskal-Wallis H
-    kw_res = saes.statistics.kruskal({"AlgA": g1, "AlgB": g2, "AlgC": g3}, alpha=0.05)
+    kw_res = saesV2.statistics.kruskal({"AlgA": g1, "AlgB": g2, "AlgC": g3}, alpha=0.05)
     assert kw_res.test_name == "Kruskal-Wallis H Test"
     assert kw_res.is_significant is True
     assert kw_res.effect_size is not None
     assert "Epsilon-squared" in kw_res.effect_size.name
 
     # Effect sizes & p-value adjustments
-    a12, mag = saes.statistics.vargha_delaney_a12(g1, g2, maximize=True)
+    a12, mag = saesV2.statistics.vargha_delaney_a12(g1, g2, maximize=True)
     assert a12 > 0.7
     assert mag == "large"
 
-    delta, d_mag = saes.statistics.cliffs_delta(g1, g2, maximize=True)
+    delta, d_mag = saesV2.statistics.cliffs_delta(g1, g2, maximize=True)
     assert pytest.approx(delta, abs=1e-6) == 2.0 * a12 - 1.0
     assert d_mag == "large"
 
     p_raw = [0.005, 0.02, 0.04]
-    p_holm = saes.statistics.adjust_pvalues(p_raw, method="holm")
-    p_bonf = saes.statistics.adjust_pvalues(p_raw, method="bonferroni")
-    p_hoch = saes.statistics.adjust_pvalues(p_raw, method="hochberg")
-    p_bh = saes.statistics.adjust_pvalues(p_raw, method="fdr_bh")
+    p_holm = saesV2.statistics.adjust_pvalues(p_raw, method="holm")
+    p_bonf = saesV2.statistics.adjust_pvalues(p_raw, method="bonferroni")
+    p_hoch = saesV2.statistics.adjust_pvalues(p_raw, method="hochberg")
+    p_bh = saesV2.statistics.adjust_pvalues(p_raw, method="fdr_bh")
     assert len(p_holm) == 3
     assert p_holm[0] == pytest.approx(0.015)
     assert p_bonf[0] == pytest.approx(0.015)
@@ -286,8 +286,8 @@ def test_nonparametric_tests_and_effect_sizes() -> None:
 def test_statistical_tables_and_data_explorer() -> None:
     import pandas as pd
 
-    import saes
-    from saes.domain.models import Dataset
+    import saesV2
+    from saesV2.domain.models import Dataset
 
     rows = []
     rng = np.random.default_rng(42)
@@ -357,7 +357,7 @@ def test_statistical_tables_and_data_explorer() -> None:
     ds = Dataset(pd.DataFrame(rows))
 
     # 1. Generate instance_algorithm table (Wilcoxon) — targeted calculation (no pairwise_matrix computed)
-    tbl = saes.generate_table(
+    tbl = saesV2.generate_table(
         dataset=ds,
         metric="HV",
         table_type="instance_algorithm",
@@ -378,7 +378,7 @@ def test_statistical_tables_and_data_explorer() -> None:
     assert "NSGAII" in tbl.markdown_preview
 
     # Generate pairwise_matrix table when explicitly requested
-    tbl_pw = saes.generate_table(
+    tbl_pw = saesV2.generate_table(
         dataset=ds,
         metric="HV",
         table_type="pairwise_matrix",
@@ -393,11 +393,11 @@ def test_statistical_tables_and_data_explorer() -> None:
 
     # Check exports in all formats
     for fmt in ["latex", "csv", "markdown", "html", "docx", "pdf"]:
-        exported = saes.export_table(tbl, export_format=fmt)
+        exported = saesV2.export_table(tbl, export_format=fmt)
         assert len(exported) > 20
 
     # Check PDF styling options
-    pdf_custom = saes.export_table(
+    pdf_custom = saesV2.export_table(
         tbl,
         export_format="pdf",
         title="Custom Benchmark Study",
@@ -413,7 +413,7 @@ def test_statistical_tables_and_data_explorer() -> None:
     assert pdf_custom.startswith(b"%PDF")
 
     # 2. Explore dataset & export observations in all formats
-    exp = saes.explore(dataset=ds, metrics=["HV", "IGD"], alpha=0.05)
+    exp = saesV2.explore(dataset=ds, metrics=["HV", "IGD"], alpha=0.05)
     assert exp.context_diagnostics.k_algorithms == 3
     assert exp.context_diagnostics.n_instances == 4
     assert exp.context_diagnostics.n_metrics == 2
@@ -423,5 +423,5 @@ def test_statistical_tables_and_data_explorer() -> None:
     assert len(exp.aggregated_rows) == 12
 
     for fmt in ["latex", "csv", "markdown", "html", "docx", "pdf"]:
-        exp_bytes = saes.export_exploration(exp, view_mode="reveal_metrics", export_format=fmt)
+        exp_bytes = saesV2.export_exploration(exp, view_mode="reveal_metrics", export_format=fmt)
         assert len(exp_bytes) > 20

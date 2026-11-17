@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from saes.server.app import app
+from saesV2.server.app import app
 
 client = TestClient(app)
 

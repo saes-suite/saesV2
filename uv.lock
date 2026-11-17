@@ -1618,7 +1618,40 @@ wheels = [
 ]
 
 [[package]]
-name = "saes"
+name = "saes-ai"
+version = "0.1.0"
+source = { editable = "../saes-ai" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "python-multipart" },
+    { name = "saesv2" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.20.0" },
+    { name = "anthropic", marker = "extra == 'providers'", specifier = ">=0.20.0" },
+    { name = "fastapi", specifier = ">=0.110.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
+    { name = "openai", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "openai", marker = "extra == 'providers'", specifier = ">=1.0.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "saesv2", editable = "." },
+    { name = "uvicorn", specifier = ">=0.28.0" },
+]
+provides-extras = ["providers", "dev"]
+
+[[package]]
+name = "saesv2"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -1695,9 +1728,9 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'api'", specifier = ">=0.0.9" },
     { name = "python-multipart", marker = "extra == 'dev'", specifier = ">=0.0.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "saes", extras = ["viz", "api", "ai"], marker = "extra == 'all'" },
     { name = "saes-ai", marker = "extra == 'ai'", editable = "../saes-ai" },
     { name = "saes-ai", marker = "extra == 'dev'", editable = "../saes-ai" },
+    { name = "saesv2", extras = ["viz", "api", "ai"], marker = "extra == 'all'" },
     { name = "scipy", specifier = ">=1.10.0" },
     { name = "seaborn", marker = "extra == 'dev'", specifier = ">=0.12.0" },
     { name = "seaborn", marker = "extra == 'viz'", specifier = ">=0.12.0" },
@@ -1707,39 +1740,6 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.28.0" },
 ]
 provides-extras = ["viz", "api", "ai", "dev", "all"]
-
-[[package]]
-name = "saes-ai"
-version = "0.1.0"
-source = { editable = "../saes-ai" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "python-multipart" },
-    { name = "saes" },
-    { name = "uvicorn" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.20.0" },
-    { name = "anthropic", marker = "extra == 'providers'", specifier = ">=0.20.0" },
-    { name = "fastapi", specifier = ">=0.110.0" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "openai", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "openai", marker = "extra == 'providers'", specifier = ">=1.0.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
-    { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "saes", editable = "." },
-    { name = "uvicorn", specifier = ">=0.28.0" },
-]
-provides-extras = ["providers", "dev"]
 
 [[package]]
 name = "scipy"

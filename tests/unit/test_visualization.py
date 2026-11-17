@@ -5,17 +5,17 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib.figure import Figure
 
-from saes.domain.exceptions import VisualizationError
-from saes.visualization.barplot import BarPlotGenerator
-from saes.visualization.bayesianplot import BayesianRankPlotGenerator
-from saes.visualization.boxplot import BoxplotGenerator
-from saes.visualization.cdplot import CriticalDistancePlotGenerator
-from saes.visualization.ecdfplot import ECDFPlotGenerator
-from saes.visualization.lineplot import LinePlotGenerator
-from saes.visualization.registry import PlotterRegistry
-from saes.visualization.scatterplot import ScatterPlotGenerator
-from saes.visualization.utils import get_color_map, to_hex_color
-from saes.visualization.violinplot import ViolinPlotGenerator
+from saesV2.domain.exceptions import VisualizationError
+from saesV2.visualization.barplot import BarPlotGenerator
+from saesV2.visualization.bayesianplot import BayesianRankPlotGenerator
+from saesV2.visualization.boxplot import BoxplotGenerator
+from saesV2.visualization.cdplot import CriticalDistancePlotGenerator
+from saesV2.visualization.ecdfplot import ECDFPlotGenerator
+from saesV2.visualization.lineplot import LinePlotGenerator
+from saesV2.visualization.registry import PlotterRegistry
+from saesV2.visualization.scatterplot import ScatterPlotGenerator
+from saesV2.visualization.utils import get_color_map, to_hex_color
+from saesV2.visualization.violinplot import ViolinPlotGenerator
 
 
 @pytest.fixture
