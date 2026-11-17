@@ -69,3 +69,100 @@ def test_ranking_endpoint() -> None:
     assert len(data["bayesian_ranking"]["boundary_lines"]) == 3
     assert data["bayesian_sign"]["bayesian_method"] == "sign"
     assert data["bayesian_signed_rank"]["bayesian_method"] == "signed-rank"
+
+
+def test_tables_and_explore_endpoints() -> None:
+    file_bytes = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_tbl = client.post(
+        "/api/v1/tables",
+        files={"file": ("data.csv", file_bytes, "text/csv")},
+        data={
+            "metric": "HV",
+            "table_type": "instance_algorithm",
+            "test_type": "wilcoxon",
+            "posthoc_correction": "holm",
+            "alpha": "0.05",
+        },
+    )
+    assert res_tbl.status_code == 200
+    tbl_data = res_tbl.json()
+    assert tbl_data["metric"] == "HV"
+    assert len(tbl_data["instance_rows"]) == 1
+    assert len(tbl_data["pairwise_matrix"]) == 0
+    assert "\\begin{table*}" in tbl_data["latex_preview"]
+
+    # Test pairwise_matrix table type
+    pw_bytes = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_pw = client.post(
+        "/api/v1/tables",
+        files={"file": ("data.csv", pw_bytes, "text/csv")},
+        data={
+            "metric": "HV",
+            "table_type": "pairwise_matrix",
+            "test_type": "wilcoxon",
+            "posthoc_correction": "holm",
+            "alpha": "0.05",
+        },
+    )
+    assert res_pw.status_code == 200
+    pw_json = res_pw.json()
+    assert len(pw_json["pairwise_matrix"]) == 2
+    assert "\\documentclass{article}" in pw_json["latex_preview"]
+    assert "1vs1 Table" in pw_json["latex_preview"]
+    assert len(pw_json["pairwise_matrix"][0][1]["instance_symbols"]) == 1
+
+    # Test export endpoint (docx and pdf)
+    for fmt in ["latex", "csv", "docx", "pdf"]:
+        exp_bytes = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+        res_exp = client.post(
+            "/api/v1/tables/export",
+            files={"file": ("data.csv", exp_bytes, "text/csv")},
+            data={"metric": "HV", "export_format": fmt},
+        )
+        assert res_exp.status_code == 200
+        assert len(res_exp.content) > 20
+
+    # Test PDF export with presentation & styling parameters
+    exp_pdf_bytes = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_pdf_styled = client.post(
+        "/api/v1/tables/export",
+        files={"file": ("data.csv", exp_pdf_bytes, "text/csv")},
+        data={
+            "metric": "HV",
+            "export_format": "pdf",
+            "pdf_title": "Benchmark Report 2026",
+            "pdf_caption": "Table styling verification test",
+            "pdf_theme": "navy",
+            "pdf_orientation": "portrait",
+            "pdf_font_size": "9.0",
+            "pdf_highlight_best": "true",
+            "pdf_show_zebra": "true",
+            "pdf_grid_style": "minimal",
+        },
+    )
+    assert res_pdf_styled.status_code == 200
+    assert len(res_pdf_styled.content) > 50
+    assert res_pdf_styled.headers["content-type"] == "application/pdf"
+
+    # Test explore endpoint and explore/export endpoint
+    exp_file = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+    res_explore = client.post(
+        "/api/v1/explore",
+        files={"file": ("data.csv", exp_file, "text/csv")},
+        data={"alpha": "0.05"},
+    )
+    assert res_explore.status_code == 200
+    exp_data = res_explore.json()
+    assert exp_data["context_diagnostics"]["k_algorithms"] == 2
+    assert len(exp_data["recommendations"]) >= 2
+    assert len(exp_data["distribution_profiles"]) == 2
+
+    for fmt in ["latex", "csv", "docx", "pdf"]:
+        exp_obs_bytes = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+        res_obs_exp = client.post(
+            "/api/v1/explore/export",
+            files={"file": ("data.csv", exp_obs_bytes, "text/csv")},
+            data={"export_format": fmt, "view_mode": "reveal_metrics"},
+        )
+        assert res_obs_exp.status_code == 200
+        assert len(res_obs_exp.content) > 20

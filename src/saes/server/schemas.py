@@ -8,6 +8,8 @@ from saes.domain.models import (
     AssumptionResult,
     BayesianRankResult,
     CriticalDistanceResult,
+    DataExplorationResult,
+    StatisticalTableResult,
     ValidationIssue,
 )
 
@@ -94,3 +96,7 @@ class RankingAnalysisResponse(BaseModel):
     bayesian_ranking: BayesianRankResult
     bayesian_sign: BayesianRankResult | None = None
     bayesian_signed_rank: BayesianRankResult | None = None
+
+
+StatisticalTableResponse = StatisticalTableResult
+DataExplorationResponse = DataExplorationResult

@@ -9,11 +9,19 @@ trigger: always_on
 
 ## Project Identity
 
-**What**: SAES (Stochastic Algorithm Evaluation Suite) — Modern Python library and Streamlit GUI for statistical analysis, hypothesis testing, and algorithm evaluation.
+**What**: SAES (Stochastic Algorithm Evaluation Suite) — Modern Python library and FastAPI REST server for statistical analysis, hypothesis testing, and algorithm evaluation.
 
 **Who**: SAES development team.
 
-**Goal**: Provide a clean, extensible statistical suite (t-tests, ANOVA, assumption checkers, decision engines) and automated reporting for algorithm evaluation.
+**Goal**: Provide a clean, extensible statistical suite (t-tests, ANOVA, assumption checkers, decision engines) and automated REST reporting for algorithm evaluation.
+
+---
+
+## Non-Negotiable Architecture Rules (API-First & Python Parity)
+
+1. **Python Programmatic API First**: Every feature in the SAES ecosystem (and every feature used by `saes-ui`) MUST be implemented first as a programmatic Python API in `saes` so Python developers have full parity.
+2. **REST API Exposure**: Every UI-facing capability must be exposed through typed FastAPI endpoints in `src/saes/server/` using Pydantic V2 schemas.
+3. **Single Source of Computation**: `saes` is the sole authority for statistical calculations, validation, and dataset repairs/transformations. `saes-ui` must never compute statistics or domain logic locally; it must always call `saes` via the REST API.
 
 ---
 

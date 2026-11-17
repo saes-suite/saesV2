@@ -230,3 +230,198 @@ def test_friedman_nemenyi_and_bayesian_ranking() -> None:
     cd_all = FriedmanNemenyiTest().run(df=df, metric="all-metrics", alpha=0.05)
     assert cd_all.metrics_list == ["HV"]
     assert "CD =" in cd_all.params_label
+
+
+def test_nonparametric_tests_and_effect_sizes() -> None:
+    import saes
+
+    np.random.seed(123)
+    g1 = np.random.exponential(scale=2.0, size=25) + 5.0
+    g2 = np.random.exponential(scale=2.0, size=25) + 1.0
+    g3 = np.random.exponential(scale=2.0, size=25) + 0.2
+
+    # Wilcoxon Signed-Rank
+    w_res = saes.statistics.wilcoxon({"AlgA": g1, "AlgB": g2}, alpha=0.05)
+    assert w_res.test_name == "Wilcoxon Signed-Rank Test"
+    assert w_res.is_significant is True
+    assert w_res.effect_size is not None
+    assert w_res.effect_size.name == "Vargha-Delaney A12"
+    assert w_res.effect_size.value > 0.7
+
+    # Mann-Whitney U
+    mw_res = saes.statistics.mann_whitney({"AlgA": g1, "AlgB": g2}, alpha=0.05)
+    assert "Mann-Whitney U" in mw_res.test_name
+    assert mw_res.is_significant is True
+    assert mw_res.effect_size is not None
+    assert mw_res.effect_size.value > 0.7
+
+    # Kruskal-Wallis H
+    kw_res = saes.statistics.kruskal({"AlgA": g1, "AlgB": g2, "AlgC": g3}, alpha=0.05)
+    assert kw_res.test_name == "Kruskal-Wallis H Test"
+    assert kw_res.is_significant is True
+    assert kw_res.effect_size is not None
+    assert "Epsilon-squared" in kw_res.effect_size.name
+
+    # Effect sizes & p-value adjustments
+    a12, mag = saes.statistics.vargha_delaney_a12(g1, g2, maximize=True)
+    assert a12 > 0.7
+    assert mag == "large"
+
+    delta, d_mag = saes.statistics.cliffs_delta(g1, g2, maximize=True)
+    assert pytest.approx(delta, abs=1e-6) == 2.0 * a12 - 1.0
+    assert d_mag == "large"
+
+    p_raw = [0.005, 0.02, 0.04]
+    p_holm = saes.statistics.adjust_pvalues(p_raw, method="holm")
+    p_bonf = saes.statistics.adjust_pvalues(p_raw, method="bonferroni")
+    p_hoch = saes.statistics.adjust_pvalues(p_raw, method="hochberg")
+    p_bh = saes.statistics.adjust_pvalues(p_raw, method="fdr_bh")
+    assert len(p_holm) == 3
+    assert p_holm[0] == pytest.approx(0.015)
+    assert p_bonf[0] == pytest.approx(0.015)
+    assert p_hoch[2] == pytest.approx(0.04)
+    assert p_bh[0] <= p_bonf[0]
+
+
+def test_statistical_tables_and_data_explorer() -> None:
+    import pandas as pd
+
+    import saes
+    from saes.domain.models import Dataset
+
+    rows = []
+    rng = np.random.default_rng(42)
+    for inst in ["ZDT1", "ZDT2", "ZDT3", "DTLZ1"]:
+        for run_id in range(10):
+            rows.append(
+                {
+                    "algorithm": "NSGAII",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": float(0.85 + rng.normal(0, 0.01)),
+                    "maximize": True,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "MOEAD",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": float(0.75 + rng.normal(0, 0.01)),
+                    "maximize": True,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "SPEA2",
+                    "instance": inst,
+                    "metric": "HV",
+                    "run_id": run_id,
+                    "value": float(0.65 + rng.normal(0, 0.01)),
+                    "maximize": True,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "NSGAII",
+                    "instance": inst,
+                    "metric": "IGD",
+                    "run_id": run_id,
+                    "value": float(0.02 + abs(rng.normal(0, 0.002))),
+                    "maximize": False,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "MOEAD",
+                    "instance": inst,
+                    "metric": "IGD",
+                    "run_id": run_id,
+                    "value": float(0.05 + abs(rng.normal(0, 0.005))),
+                    "maximize": False,
+                }
+            )
+            rows.append(
+                {
+                    "algorithm": "SPEA2",
+                    "instance": inst,
+                    "metric": "IGD",
+                    "run_id": run_id,
+                    "value": float(0.09 + abs(rng.normal(0, 0.008))),
+                    "maximize": False,
+                }
+            )
+
+    ds = Dataset(pd.DataFrame(rows))
+
+    # 1. Generate instance_algorithm table (Wilcoxon) — targeted calculation (no pairwise_matrix computed)
+    tbl = saes.generate_table(
+        dataset=ds,
+        metric="HV",
+        table_type="instance_algorithm",
+        test_type="wilcoxon",
+        posthoc_correction="holm",
+        reference_algorithm="NSGAII",
+    )
+    assert tbl.metric == "HV"
+    assert tbl.reference_algorithm == "NSGAII"
+    assert len(tbl.instance_rows) == 4
+    assert len(tbl.algorithm_summaries) == 3
+    assert len(tbl.pairwise_matrix) == 0
+    assert "\\begin{table*}" in tbl.latex_preview
+    assert "footnotesize" in tbl.latex_preview
+    # LaTeX must not contain raw unescaped mathematical unicode that breaks pdflatex
+    for unescaped_char in ["±", "α", "−", "≈", "—"]:
+        assert unescaped_char not in tbl.latex_preview
+    assert "NSGAII" in tbl.markdown_preview
+
+    # Generate pairwise_matrix table when explicitly requested
+    tbl_pw = saes.generate_table(
+        dataset=ds,
+        metric="HV",
+        table_type="pairwise_matrix",
+        test_type="wilcoxon",
+        posthoc_correction="holm",
+    )
+    assert len(tbl_pw.pairwise_matrix) == 3
+    assert "\\documentclass{article}" in tbl_pw.latex_preview
+    assert "1vs1 Table" in tbl_pw.latex_preview
+    assert "\\texttt{" in tbl_pw.latex_preview
+    assert len(tbl_pw.pairwise_matrix[0][1].instance_symbols) == 4
+
+    # Check exports in all formats
+    for fmt in ["latex", "csv", "markdown", "html", "docx", "pdf"]:
+        exported = saes.export_table(tbl, export_format=fmt)
+        assert len(exported) > 20
+
+    # Check PDF styling options
+    pdf_custom = saes.export_table(
+        tbl,
+        export_format="pdf",
+        title="Custom Benchmark Study",
+        caption="Significance test with alpha 0.05",
+        pdf_theme="academic_bw",
+        pdf_orientation="portrait",
+        pdf_font_size=7.5,
+        pdf_highlight_best=True,
+        pdf_show_zebra=False,
+        pdf_grid_style="horizontal",
+    )
+    assert len(pdf_custom) > 100
+    assert pdf_custom.startswith(b"%PDF")
+
+    # 2. Explore dataset & export observations in all formats
+    exp = saes.explore(dataset=ds, metrics=["HV", "IGD"], alpha=0.05)
+    assert exp.context_diagnostics.k_algorithms == 3
+    assert exp.context_diagnostics.n_instances == 4
+    assert exp.context_diagnostics.n_metrics == 2
+    assert len(exp.recommendations) >= 4
+    assert len(exp.distribution_profiles) == 24
+    assert len(exp.pivoted_rows) == 120
+    assert len(exp.aggregated_rows) == 12
+
+    for fmt in ["latex", "csv", "markdown", "html", "docx", "pdf"]:
+        exp_bytes = saes.export_exploration(exp, view_mode="reveal_metrics", export_format=fmt)
+        assert len(exp_bytes) > 20

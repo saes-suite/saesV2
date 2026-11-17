@@ -2,20 +2,24 @@ import io
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 
 import saes
 from saes.io.csv_reader import CSVReader
 from saes.server.schemas import (
     AnalysisResponse,
     CellAnalysisSchema,
+    DataExplorationResponse,
     DatasetDetailSchema,
     DatasetItemSchema,
     DatasetUpdateSchema,
     RankingAnalysisResponse,
+    StatisticalTableResponse,
     ValidationResponse,
 )
 from saes.server.storage import get_datasets_dir
+from saes.stats.explorer import export_exploration_table
+from saes.stats.tables import export_statistical_table
 from saes.validation.validator import DatasetValidator
 
 router = APIRouter(prefix="/api/v1/datasets", tags=["Datasets"])
@@ -258,6 +262,369 @@ def ranking_dataset_from_path(
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Ranking analysis error: {e!s}") from e
+
+
+def _parse_csv_list(raw: str | None) -> list[str] | None:
+    if not raw or not raw.strip():
+        return None
+    items = [x.strip() for x in raw.split(",") if x.strip()]
+    return items if items else None
+
+
+@router.get("/{filename}/tables", response_model=StatisticalTableResponse)
+def get_dataset_table(
+    filename: str,
+    response: Response,
+    metric: Annotated[str | None, Query()] = None,
+    table_type: Annotated[str, Query()] = "instance_algorithm",
+    test_type: Annotated[str, Query()] = "auto",
+    posthoc_correction: Annotated[str, Query()] = "holm",
+    summary_stat: Annotated[str, Query()] = "auto",
+    reference_algorithm: Annotated[str | None, Query()] = None,
+    scope: Annotated[str, Query()] = "all-instances",
+    selected_instance: Annotated[str | None, Query()] = None,
+    algorithms_filter: Annotated[str | None, Query()] = None,
+    instances_filter: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+    precision: Annotated[int, Query()] = 4,
+) -> StatisticalTableResponse:
+    """Generate a statistical benchmark table via HTTP GET (cacheable by standard HTTP clients)."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return saes.generate_table(
+            dataset=dataset,
+            metric=metric,
+            table_type=table_type,
+            test_type=test_type,
+            posthoc_correction=posthoc_correction,
+            summary_stat=summary_stat,
+            reference_algorithm=reference_algorithm,
+            scope=scope,
+            selected_instance=selected_instance,
+            algorithms_filter=_parse_csv_list(algorithms_filter),
+            instances_filter=_parse_csv_list(instances_filter),
+            alpha=alpha,
+            precision=precision,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Table generation error: {e!s}") from e
+
+
+@router.post("/{filename}/tables", response_model=StatisticalTableResponse)
+def generate_dataset_table(
+    filename: str,
+    metric: Annotated[str | None, Form()] = None,
+    table_type: Annotated[str, Form()] = "instance_algorithm",
+    test_type: Annotated[str, Form()] = "auto",
+    posthoc_correction: Annotated[str, Form()] = "holm",
+    summary_stat: Annotated[str, Form()] = "auto",
+    reference_algorithm: Annotated[str | None, Form()] = None,
+    scope: Annotated[str, Form()] = "all-instances",
+    selected_instance: Annotated[str | None, Form()] = None,
+    algorithms_filter: Annotated[str | None, Form()] = None,
+    instances_filter: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+    precision: Annotated[int, Form()] = 4,
+    latex_document_mode: Annotated[str, Form()] = "standalone",
+    latex_notation: Annotated[str, Form()] = "scientific",
+) -> StatisticalTableResponse:
+    """Generate a statistical benchmark table (ANOVA, Friedman, Wilcoxon, Pairwise) for a saved dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        return saes.generate_table(
+            dataset=dataset,
+            metric=metric,
+            table_type=table_type,
+            test_type=test_type,
+            posthoc_correction=posthoc_correction,
+            summary_stat=summary_stat,
+            reference_algorithm=reference_algorithm,
+            scope=scope,
+            selected_instance=selected_instance,
+            algorithms_filter=_parse_csv_list(algorithms_filter),
+            instances_filter=_parse_csv_list(instances_filter),
+            alpha=alpha,
+            precision=precision,
+            latex_document_mode=latex_document_mode,
+            latex_notation=latex_notation,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Table generation error: {e!s}") from e
+
+
+@router.get("/{filename}/tables/export")
+def export_dataset_table_get(
+    filename: str,
+    export_format: Annotated[str, Query()] = "latex",
+    metric: Annotated[str | None, Query()] = None,
+    table_type: Annotated[str, Query()] = "instance_algorithm",
+    test_type: Annotated[str, Query()] = "auto",
+    posthoc_correction: Annotated[str, Query()] = "holm",
+    summary_stat: Annotated[str, Query()] = "auto",
+    reference_algorithm: Annotated[str | None, Query()] = None,
+    scope: Annotated[str, Query()] = "all-instances",
+    selected_instance: Annotated[str | None, Query()] = None,
+    algorithms_filter: Annotated[str | None, Query()] = None,
+    instances_filter: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+    precision: Annotated[int, Query()] = 4,
+    latex_document_mode: Annotated[str, Query()] = "standalone",
+    latex_notation: Annotated[str, Query()] = "scientific",
+    pdf_title: Annotated[str | None, Query()] = None,
+    pdf_caption: Annotated[str | None, Query()] = None,
+    pdf_theme: Annotated[str, Query()] = "slate",
+    pdf_orientation: Annotated[str, Query()] = "landscape",
+    pdf_font_size: Annotated[float, Query()] = 8.5,
+    pdf_highlight_best: Annotated[bool, Query()] = True,
+    pdf_show_zebra: Annotated[bool, Query()] = True,
+    pdf_grid_style: Annotated[str, Query()] = "full",
+) -> Response:
+    """Export a statistical benchmark table via HTTP GET."""
+    return export_dataset_table(
+        filename=filename,
+        export_format=export_format,
+        metric=metric,
+        table_type=table_type,
+        test_type=test_type,
+        posthoc_correction=posthoc_correction,
+        summary_stat=summary_stat,
+        reference_algorithm=reference_algorithm,
+        scope=scope,
+        selected_instance=selected_instance,
+        algorithms_filter=algorithms_filter,
+        instances_filter=instances_filter,
+        alpha=alpha,
+        precision=precision,
+        latex_document_mode=latex_document_mode,
+        latex_notation=latex_notation,
+        pdf_title=pdf_title,
+        pdf_caption=pdf_caption,
+        pdf_theme=pdf_theme,
+        pdf_orientation=pdf_orientation,
+        pdf_font_size=pdf_font_size,
+        pdf_highlight_best=pdf_highlight_best,
+        pdf_show_zebra=pdf_show_zebra,
+        pdf_grid_style=pdf_grid_style,
+    )
+
+
+@router.post("/{filename}/tables/export")
+def export_dataset_table(
+    filename: str,
+    export_format: Annotated[str, Form()] = "latex",
+    metric: Annotated[str | None, Form()] = None,
+    table_type: Annotated[str, Form()] = "instance_algorithm",
+    test_type: Annotated[str, Form()] = "auto",
+    posthoc_correction: Annotated[str, Form()] = "holm",
+    summary_stat: Annotated[str, Form()] = "auto",
+    reference_algorithm: Annotated[str | None, Form()] = None,
+    scope: Annotated[str, Form()] = "all-instances",
+    selected_instance: Annotated[str | None, Form()] = None,
+    algorithms_filter: Annotated[str | None, Form()] = None,
+    instances_filter: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+    precision: Annotated[int, Form()] = 4,
+    latex_document_mode: Annotated[str, Form()] = "standalone",
+    latex_notation: Annotated[str, Form()] = "scientific",
+    pdf_title: Annotated[str | None, Form()] = None,
+    pdf_caption: Annotated[str | None, Form()] = None,
+    pdf_theme: Annotated[str, Form()] = "slate",
+    pdf_orientation: Annotated[str, Form()] = "landscape",
+    pdf_font_size: Annotated[float, Form()] = 8.5,
+    pdf_highlight_best: Annotated[bool, Form()] = True,
+    pdf_show_zebra: Annotated[bool, Form()] = True,
+    pdf_grid_style: Annotated[str, Form()] = "full",
+) -> Response:
+    """Generate and export a statistical benchmark table for a saved dataset in PDF, DOCX, LaTeX, CSV, MD, or HTML."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        table_res = saes.generate_table(
+            dataset=dataset,
+            metric=metric,
+            table_type=table_type,
+            test_type=test_type,
+            posthoc_correction=posthoc_correction,
+            summary_stat=summary_stat,
+            reference_algorithm=reference_algorithm,
+            scope=scope,
+            selected_instance=selected_instance,
+            algorithms_filter=_parse_csv_list(algorithms_filter),
+            instances_filter=_parse_csv_list(instances_filter),
+            alpha=alpha,
+            precision=precision,
+            latex_document_mode=latex_document_mode,
+            latex_notation=latex_notation,
+        )
+        file_bytes, media_type, ext = export_statistical_table(
+            table_res,
+            export_format=export_format,
+            document_mode=latex_document_mode,
+            notation=latex_notation,
+            title=pdf_title,
+            caption=pdf_caption,
+            pdf_theme=pdf_theme,
+            pdf_orientation=pdf_orientation,
+            pdf_font_size=pdf_font_size,
+            pdf_highlight_best=pdf_highlight_best,
+            pdf_show_zebra=pdf_show_zebra,
+            pdf_grid_style=pdf_grid_style,
+        )
+        out_name = f"saes_table_{table_res.metric}_{table_res.table_type}.{ext}"
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{out_name}"',
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Table export error: {e!s}") from e
+
+
+@router.get("/{filename}/explore", response_model=DataExplorationResponse)
+def get_explore_dataset_from_path(
+    filename: str,
+    response: Response,
+    metrics: Annotated[str | None, Query()] = None,
+    algorithms: Annotated[str | None, Query()] = None,
+    instances: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+) -> DataExplorationResponse:
+    """Explore dataset observations via HTTP GET (cacheable by standard HTTP clients)."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return saes.explore(
+            dataset=dataset,
+            metrics=_parse_csv_list(metrics),
+            algorithms=_parse_csv_list(algorithms),
+            instances=_parse_csv_list(instances),
+            alpha=alpha,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Data exploration error: {e!s}") from e
+
+
+@router.post("/{filename}/explore", response_model=DataExplorationResponse)
+def explore_dataset_from_path(
+    filename: str,
+    metrics: Annotated[str | None, Form()] = None,
+    algorithms: Annotated[str | None, Form()] = None,
+    instances: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+) -> DataExplorationResponse:
+    """Explore observations, reveal multi-metric pivots, check normality, and recommend tests for a saved dataset."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        return saes.explore(
+            dataset=dataset,
+            metrics=_parse_csv_list(metrics),
+            algorithms=_parse_csv_list(algorithms),
+            instances=_parse_csv_list(instances),
+            alpha=alpha,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Data exploration error: {e!s}") from e
+
+
+@router.get("/{filename}/explore/export")
+def export_explore_dataset_get(
+    filename: str,
+    export_format: Annotated[str, Query()] = "csv",
+    view_mode: Annotated[str, Query()] = "reveal_metrics",
+    stat_format: Annotated[str, Query()] = "mean_std",
+    normality_filter: Annotated[str, Query()] = "all",
+    metrics: Annotated[str | None, Query()] = None,
+    algorithms: Annotated[str | None, Query()] = None,
+    instances: Annotated[str | None, Query()] = None,
+    alpha: Annotated[float, Query()] = 0.05,
+) -> Response:
+    """Export an Observations & Data exploration view via HTTP GET."""
+    return export_explore_dataset(
+        filename=filename,
+        export_format=export_format,
+        view_mode=view_mode,
+        stat_format=stat_format,
+        normality_filter=normality_filter,
+        metrics=metrics,
+        algorithms=algorithms,
+        instances=instances,
+        alpha=alpha,
+    )
+
+
+@router.post("/{filename}/explore/export")
+def export_explore_dataset(
+    filename: str,
+    export_format: Annotated[str, Form()] = "csv",
+    view_mode: Annotated[str, Form()] = "reveal_metrics",
+    stat_format: Annotated[str, Form()] = "mean_std",
+    normality_filter: Annotated[str, Form()] = "all",
+    metrics: Annotated[str | None, Form()] = None,
+    algorithms: Annotated[str | None, Form()] = None,
+    instances: Annotated[str | None, Form()] = None,
+    alpha: Annotated[float, Form()] = 0.05,
+) -> Response:
+    """Export an Observations & Data exploration view for a saved dataset in PDF, DOCX, LaTeX, CSV, MD, or HTML."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saes.load(file_path)
+        exp_res = saes.explore(
+            dataset=dataset,
+            metrics=_parse_csv_list(metrics),
+            algorithms=_parse_csv_list(algorithms),
+            instances=_parse_csv_list(instances),
+            alpha=alpha,
+        )
+        file_bytes, media_type, ext = export_exploration_table(
+            exploration=exp_res,
+            view_mode=view_mode,
+            export_format=export_format,
+            stat_format=stat_format,
+            normality_filter=normality_filter,
+        )
+        out_name = f"saes_observations_{view_mode}.{ext}"
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{out_name}"',
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Observation export error: {e!s}") from e
 
 
 @router.delete("/{filename}")

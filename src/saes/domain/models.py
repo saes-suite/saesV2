@@ -234,6 +234,321 @@ class BayesianRankResult(BaseModel):
     items: list[BayesianPosteriorItem] = Field(default_factory=list)
 
 
+class BenchmarkTableCell(BaseModel):
+    """Cell (instance, algorithm) in a publication-grade benchmark performance & significance table."""
+
+    model_config = ConfigDict(frozen=True)
+
+    instance: str
+    algorithm: str
+    n: int
+    mean: float
+    std: float
+    median: float
+    iqr: float
+    min_val: float
+    max_val: float
+    avg_rank: float
+    formatted_value: str
+    is_best: bool = False
+    is_second_best: bool = False
+    is_reference: bool = False
+    significance_symbol: str = ""
+    pairwise_test_name: str = ""
+    pairwise_statistic: float | None = None
+    pairwise_p_value: float | None = None
+    pairwise_p_adjusted: float | None = None
+    effect_size_name: str | None = None
+    effect_size_value: float | None = None
+    effect_size_magnitude: str | None = None
+    a12: float | None = None
+    cliffs_delta: float | None = None
+    cohens_d: float | None = None
+    normality_passed: bool = True
+    shapiro_stat: float | None = None
+    shapiro_p_value: float | None = None
+    skewness: float = 0.0
+    kurtosis: float = 0.0
+    raw_values: list[float] = Field(default_factory=list)
+
+
+class BenchmarkTableInstanceRow(BaseModel):
+    """Row representing a single benchmark instance across all evaluated algorithms."""
+
+    model_config = ConfigDict(frozen=True)
+
+    instance: str
+    best_algorithm: str
+    second_best_algorithm: str = ""
+    omnibus_test_name: str
+    omnibus_statistic: float
+    omnibus_p_value: float
+    omnibus_df: str = ""
+    omnibus_significant: bool
+    omnibus_effect_size_name: str = ""
+    omnibus_effect_size_value: float = 0.0
+    omnibus_effect_size_magnitude: str = ""
+    levene_statistic: float = 0.0
+    levene_p_value: float = 1.0
+    levene_passed: bool = True
+    normality_passed_count: int = 0
+    total_groups: int = 0
+    interpretation: str = ""
+    cells: dict[str, BenchmarkTableCell] = Field(default_factory=dict)
+
+
+class AlgorithmSummaryFooter(BaseModel):
+    """Global algorithm ranking, Win/Tie/Loss (+ / ≈ / −) counts, and post-hoc summary across instances."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    avg_rank: float
+    rank_position: int
+    mean_across_instances: float
+    median_across_instances: float
+    wins: int = 0
+    ties: int = 0
+    losses: int = 0
+    best_count: int = 0
+    second_best_count: int = 0
+    friedman_z_vs_ref: float | None = None
+    friedman_p_unadjusted: float | None = None
+    friedman_p_holm: float | None = None
+    friedman_p_bonferroni: float | None = None
+    friedman_p_hochberg: float | None = None
+    global_wilcoxon_stat: float | None = None
+    global_wilcoxon_p: float | None = None
+    global_wilcoxon_p_holm: float | None = None
+    bayesian_prob_best: float | None = None
+    bayesian_prob_better_than_ref: float | None = None
+    bayesian_prob_rope_with_ref: float | None = None
+
+
+class PairwiseInstanceComparison(BaseModel):
+    """Per-instance comparison detail between a pair of algorithms (row vs col)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    instance: str
+    mean_row: float
+    std_row: float
+    median_row: float
+    iqr_row: float
+    mean_col: float
+    std_col: float
+    median_col: float
+    iqr_col: float
+    winner: str
+    symbol: str = "="
+    is_significant: bool = False
+    p_value: float | None = None
+    a12: float | None = None
+
+
+class PairwiseMatrixCell(BaseModel):
+    """Cell (algo_row, algo_col) in a k x k pairwise statistical comparison matrix."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algo_row: str
+    algo_col: str
+    test_name: str
+    statistic: float
+    p_value: float
+    p_adjusted: float
+    is_significant: bool
+    direction: str
+    symbol: str
+    instance_symbols: str = ""
+    sig_wins: int = 0
+    sig_ties: int = 0
+    sig_losses: int = 0
+    wins: int = 0
+    ties: int = 0
+    losses: int = 0
+    mean_row: float = 0.0
+    mean_col: float = 0.0
+    median_row: float = 0.0
+    median_col: float = 0.0
+    effect_size_name: str = ""
+    effect_size_value: float = 0.0
+    effect_size_magnitude: str = ""
+    a12: float = 0.5
+    cliffs_delta: float = 0.0
+    cohens_d: float = 0.0
+    prob_row_better: float | None = None
+    prob_rope: float | None = None
+    prob_col_better: float | None = None
+    interpretation: str = ""
+    instance_breakdown: list[PairwiseInstanceComparison] = Field(default_factory=list)
+
+
+class StatisticalTableResult(BaseModel):
+    """Complete result of a statistical benchmark table generation (ANOVA, Friedman, Wilcoxon, etc.)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    table_type: str
+    metric: str
+    maximize: bool
+    alpha: float
+    test_type: str
+    resolved_omnibus_test: str
+    resolved_pairwise_test: str
+    posthoc_correction: str
+    summary_stat: str
+    scope: str
+    selected_instance: str | None = None
+    reference_algorithm: str
+    algorithms: list[str] = Field(default_factory=list)
+    instances: list[str] = Field(default_factory=list)
+    friedman_stat: float | None = None
+    friedman_p_value: float | None = None
+    iman_davenport_f: float | None = None
+    iman_davenport_p_value: float | None = None
+    kendalls_w: float | None = None
+    nemenyi_cd: float | None = None
+    global_anova_f: float | None = None
+    global_anova_p: float | None = None
+    global_welch_f: float | None = None
+    global_welch_p: float | None = None
+    global_kruskal_h: float | None = None
+    global_kruskal_p: float | None = None
+    instance_rows: list[BenchmarkTableInstanceRow] = Field(default_factory=list)
+    algorithm_summaries: list[AlgorithmSummaryFooter] = Field(default_factory=list)
+    pairwise_matrix: list[list[PairwiseMatrixCell]] = Field(default_factory=list)
+    latex_document_mode: str = "standalone"
+    latex_notation: str = "scientific"
+    latex_preview: str = ""
+    markdown_preview: str = ""
+    caption: str = ""
+
+
+class DistributionProfile(BaseModel):
+    """Detailed distribution, normality, and outlier diagnostics for an (algorithm, instance, metric) group."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    instance: str
+    metric: str
+    maximize: bool
+    n: int
+    mean: float
+    std: float
+    median: float
+    iqr: float
+    min_val: float
+    max_val: float
+    cv: float
+    skewness: float
+    kurtosis: float
+    outlier_count: int
+    shapiro_stat: float
+    shapiro_p: float
+    shapiro_passed: bool
+    dagostino_stat: float | None = None
+    dagostino_p: float | None = None
+    dagostino_passed: bool | None = None
+    ks_stat: float
+    ks_p: float
+    ks_passed: bool
+    is_normal: bool
+    distribution_shape: str
+    quantiles: dict[str, float] = Field(default_factory=dict)
+    raw_values: list[float] = Field(default_factory=list)
+
+
+class PivotedObservationRow(BaseModel):
+    """Observation row where all metrics for (algorithm, instance, run_id) are revealed side-by-side."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    instance: str
+    run_id: int
+    metrics_values: dict[str, float] = Field(default_factory=dict)
+
+
+class AggregatedMetricRow(BaseModel):
+    """Aggregated (algorithm, instance) row revealing all metrics (Mean±SD, Median(IQR), Normality) side-by-side."""
+
+    model_config = ConfigDict(frozen=True)
+
+    algorithm: str
+    instance: str
+    n_runs: int
+    metrics_mean_std: dict[str, str] = Field(default_factory=dict)
+    metrics_median_iqr: dict[str, str] = Field(default_factory=dict)
+    metrics_normal: dict[str, bool] = Field(default_factory=dict)
+    metrics_shapiro_p: dict[str, float] = Field(default_factory=dict)
+
+
+class ContextDiagnostics(BaseModel):
+    """Global experimental design and assumption diagnostics for the currently filtered dataset slice."""
+
+    model_config = ConfigDict(frozen=True)
+
+    k_algorithms: int
+    n_instances: int
+    n_metrics: int
+    total_observations: int
+    runs_per_cell: int
+    is_paired: bool
+    is_balanced: bool
+    normality_pass_count: int
+    normality_total_groups: int
+    normality_rate: float
+    all_normal: bool
+    homoscedasticity_levene_stat: float
+    homoscedasticity_levene_p: float
+    homoscedasticity_passed: bool
+    homoscedasticity_bartlett_stat: float
+    homoscedasticity_bartlett_p: float
+    total_outliers: int
+
+
+class TestRecommendation(BaseModel):
+    """Context-aware statistical test recommendation with rationale and literature citation."""
+
+    model_config = ConfigDict(frozen=True)
+
+    test_id: str
+    test_name: str
+    category: str
+    suitability: str
+    suitability_score: int
+    rationale: str
+    when_to_use: str
+    assumptions_satisfied: list[str] = Field(default_factory=list)
+    assumptions_violated: list[str] = Field(default_factory=list)
+    suggested_table_type: str
+    posthoc_suggestion: str = ""
+    effect_size_suggestion: str = ""
+    reference_citation: str = ""
+
+
+class DataExplorationResult(BaseModel):
+    """Complete response for dataset exploration, multi-metric reveal, normality profiling, and test recommendations."""
+
+    model_config = ConfigDict(frozen=True)
+
+    available_metrics: list[str] = Field(default_factory=list)
+    available_algorithms: list[str] = Field(default_factory=list)
+    available_instances: list[str] = Field(default_factory=list)
+    metric_directions: dict[str, bool] = Field(default_factory=dict)
+    active_metrics: list[str] = Field(default_factory=list)
+    active_algorithms: list[str] = Field(default_factory=list)
+    active_instances: list[str] = Field(default_factory=list)
+    alpha: float = 0.05
+    context_diagnostics: ContextDiagnostics
+    recommendations: list[TestRecommendation] = Field(default_factory=list)
+    distribution_profiles: list[DistributionProfile] = Field(default_factory=list)
+    pivoted_rows: list[PivotedObservationRow] = Field(default_factory=list)
+    aggregated_rows: list[AggregatedMetricRow] = Field(default_factory=list)
+
+
 class Dataset:
     """Represents a validated SAES dataset wrapping standard algorithm evaluation records."""
 

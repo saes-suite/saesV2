@@ -267,8 +267,7 @@ class FriedmanNemenyiTest:
         cliques = [(rank_items[i].avg_rank, rank_items[j].avg_rank) for i, j in raw_cliques]
         p_str = f"{friedman_p:.2e}" if friedman_p < 0.0001 else f"{friedman_p:.4f}"
         params_label = (
-            f"α = {alpha}  •  CD = {cd:.3f}  •  k = {k}, N = {n_blocks}  •  "
-            f"χ² = {friedman_stat:.2f} (p = {p_str})"
+            f"α = {alpha}  •  CD = {cd:.3f}  •  k = {k}, N = {n_blocks}  •  χ² = {friedman_stat:.2f} (p = {p_str})"
         )
 
         return CriticalDistanceResult(

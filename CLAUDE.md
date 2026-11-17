@@ -135,7 +135,8 @@ make release-stamp      # Stamp changelog + bump version
 
 When working in this repository as an agent:
 
-1. **Update `CHANGELOG.md`** under `## [Unreleased]` for any feature, fix, or breaking change.
-2. **Never edit `version.txt` or `pyproject.toml` version manually** — use `make release-stamp`.
-3. **Always run `make ci`** before completing a task to verify linting and tests.
-4. **Follow Conventional Commits**: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
+1. **Python Programmatic & REST API Parity**: Every feature built for `saes-ui` MUST first exist as a public Python API in `saes` (`src/saes/`) and be exposed via FastAPI (`src/saes/server/`). `saes-ui` never performs domain calculations itself—it consumes the `saes` API.
+2. **Update `CHANGELOG.md`** under `## [Unreleased]` for any feature, fix, or breaking change.
+3. **Never edit `version.txt` or `pyproject.toml` version manually** — use `make release-stamp`.
+4. **Always run `make ci`** before completing a task to verify linting and tests.
+5. **Follow Conventional Commits**: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.

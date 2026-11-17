@@ -4,6 +4,10 @@ from typing import Any
 
 from saes.api import (
     analyze,
+    explore,
+    export_exploration,
+    export_table,
+    generate_table,
     load,
     plot,
     statistics,
@@ -23,8 +27,10 @@ from saes.domain.models import (
     BayesianPosteriorItem,
     BayesianRankResult,
     CriticalDistanceResult,
+    DataExplorationResult,
     Dataset,
     StatisticalResult,
+    StatisticalTableResult,
     ValidationReport,
 )
 
@@ -38,9 +44,12 @@ def __getattr__(name: str) -> Any:
         return PlotterRegistry
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 __all__ = [
     "Dataset",
     "StatisticalResult",
+    "StatisticalTableResult",
+    "DataExplorationResult",
     "ValidationReport",
     "AlgorithmRankItem",
     "CriticalDistanceResult",
@@ -57,6 +66,10 @@ __all__ = [
     "load",
     "validate",
     "analyze",
+    "generate_table",
+    "export_table",
+    "explore",
+    "export_exploration",
     "plot",
     "statistics",
 ]

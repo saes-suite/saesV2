@@ -9,13 +9,25 @@ from saes.domain.models import (
     AssumptionResult,
     BayesianRankResult,
     CriticalDistanceResult,
+    DataExplorationResult,
     Dataset,
     StatisticalResult,
+    StatisticalTableResult,
     ValidationReport,
 )
 from saes.stats.anova import OneWayANOVA, WelchANOVA
 from saes.stats.assumptions import HomogeneityChecker, NormalityChecker
+from saes.stats.explorer import DataExplorerEngine, export_exploration_table
+from saes.stats.nonparametric import (
+    KruskalWallisTest,
+    MannWhitneyUTest,
+    WilcoxonSignedRankTest,
+    adjust_pvalues,
+    compute_cliffs_delta,
+    compute_vargha_delaney_a12,
+)
 from saes.stats.ranking import BayesianRankingTest, FriedmanNemenyiTest
+from saes.stats.tables import StatisticalTableGenerator, export_statistical_table
 from saes.stats.ttest import IndependentTTest, PairedTTest, WelchTTest
 
 
@@ -125,6 +137,114 @@ def plot(
     return plotter.plot(df_sub, **plot_kwargs)
 
 
+def generate_table(
+    dataset: Dataset,
+    metric: str | None = None,
+    table_type: str = "instance_algorithm",
+    test_type: str = "auto",
+    posthoc_correction: str = "holm",
+    summary_stat: str = "auto",
+    reference_algorithm: str | None = None,
+    scope: str = "all-instances",
+    selected_instance: str | None = None,
+    algorithms_filter: list[str] | None = None,
+    instances_filter: list[str] | None = None,
+    alpha: float = 0.05,
+    precision: int = 4,
+    latex_document_mode: str = "standalone",
+    latex_notation: str = "scientific",
+) -> StatisticalTableResult:
+    """Generate a publication-grade ANOVA, Friedman, Wilcoxon, or Pairwise statistical benchmark table."""
+    return StatisticalTableGenerator().generate(
+        dataset=dataset,
+        metric=metric,
+        table_type=table_type,
+        test_type=test_type,
+        posthoc_correction=posthoc_correction,
+        summary_stat=summary_stat,
+        reference_algorithm=reference_algorithm,
+        scope=scope,
+        selected_instance=selected_instance,
+        algorithms_filter=algorithms_filter,
+        instances_filter=instances_filter,
+        alpha=alpha,
+        precision=precision,
+        latex_document_mode=latex_document_mode,
+        latex_notation=latex_notation,
+    )
+
+
+def export_table(
+    table_result: StatisticalTableResult,
+    export_format: str = "latex",
+    document_mode: str | None = None,
+    notation: str | None = None,
+    title: str | None = None,
+    caption: str | None = None,
+    pdf_theme: str = "slate",
+    pdf_orientation: str = "landscape",
+    pdf_font_size: float = 8.5,
+    pdf_highlight_best: bool = True,
+    pdf_show_zebra: bool = True,
+    pdf_grid_style: str = "full",
+) -> bytes:
+    """Export a generated StatisticalTableResult to LaTeX, CSV, Markdown, HTML, DOCX, or PDF bytes."""
+    file_bytes, _, _ = export_statistical_table(
+        table_result,
+        export_format=export_format,
+        document_mode=document_mode,
+        notation=notation,
+        title=title,
+        caption=caption,
+        pdf_theme=pdf_theme,
+        pdf_orientation=pdf_orientation,
+        pdf_font_size=pdf_font_size,
+        pdf_highlight_best=pdf_highlight_best,
+        pdf_show_zebra=pdf_show_zebra,
+        pdf_grid_style=pdf_grid_style,
+    )
+    return file_bytes
+
+
+def explore(
+    dataset: Dataset,
+    metrics: list[str] | None = None,
+    algorithms: list[str] | None = None,
+    instances: list[str] | None = None,
+    alpha: float = 0.05,
+) -> DataExplorationResult:
+    """Explore dataset observations, reveal multi-metric tables, check normality, and get test recommendations."""
+    return DataExplorerEngine().explore(
+        dataset=dataset,
+        metrics=metrics,
+        algorithms=algorithms,
+        instances=instances,
+        alpha=alpha,
+    )
+
+
+def export_exploration(
+    exploration: DataExplorationResult,
+    view_mode: str = "reveal_metrics",
+    export_format: str = "csv",
+    stat_format: str = "mean_std",
+    normality_filter: str = "all",
+    output_path: str | None = None,
+) -> bytes:
+    """Export an Observations & Data exploration result into PDF, Word (.docx), LaTeX, CSV, Markdown, or HTML."""
+    file_bytes, _, _ = export_exploration_table(
+        exploration=exploration,
+        view_mode=view_mode,
+        export_format=export_format,
+        stat_format=stat_format,
+        normality_filter=normality_filter,
+    )
+    if output_path:
+        with open(output_path, "wb") as f:
+            f.write(file_bytes)
+    return file_bytes
+
+
 # Low-level programmatic statistics sub-namespace
 class StatisticsNamespace:
     """Programmatic statistical test API namespace (saes.statistics.*)."""
@@ -145,6 +265,21 @@ class StatisticsNamespace:
         return PairedTTest().run(groups, alpha=alpha)
 
     @staticmethod
+    def wilcoxon(groups: dict[str, np.ndarray], alpha: float = 0.05) -> StatisticalResult:
+        """Wilcoxon Signed-Rank paired non-parametric test."""
+        return WilcoxonSignedRankTest().run(groups, alpha=alpha)
+
+    @staticmethod
+    def mann_whitney(groups: dict[str, np.ndarray], alpha: float = 0.05) -> StatisticalResult:
+        """Mann-Whitney U (Wilcoxon Rank-Sum) independent non-parametric test."""
+        return MannWhitneyUTest().run(groups, alpha=alpha)
+
+    @staticmethod
+    def kruskal(groups: dict[str, np.ndarray], alpha: float = 0.05) -> StatisticalResult:
+        """Kruskal-Wallis H multi-group non-parametric omnibus test."""
+        return KruskalWallisTest().run(groups, alpha=alpha)
+
+    @staticmethod
     def anova_oneway(groups: dict[str, np.ndarray], alpha: float = 0.05) -> StatisticalResult:
         """Fisher One-Way ANOVA."""
         return OneWayANOVA().run(groups, alpha=alpha)
@@ -153,6 +288,71 @@ class StatisticsNamespace:
     def anova_welch(groups: dict[str, np.ndarray], alpha: float = 0.05) -> StatisticalResult:
         """Welch's One-Way ANOVA."""
         return WelchANOVA().run(groups, alpha=alpha)
+
+    @staticmethod
+    def vargha_delaney_a12(x1: np.ndarray, x2: np.ndarray, maximize: bool = True) -> tuple[float, str]:
+        """Compute Vargha-Delaney A12 non-parametric effect size and magnitude."""
+        return compute_vargha_delaney_a12(x1, x2, maximize=maximize)
+
+    @staticmethod
+    def cliffs_delta(x1: np.ndarray, x2: np.ndarray, maximize: bool = True) -> tuple[float, str]:
+        """Compute Cliff's delta non-parametric effect size and magnitude."""
+        return compute_cliffs_delta(x1, x2, maximize=maximize)
+
+    @staticmethod
+    def adjust_pvalues(p_values: list[float], method: str = "holm") -> list[float]:
+        """Adjust p-values for multiple comparisons (Holm, Bonferroni, Hochberg, FDR-BH)."""
+        return adjust_pvalues(p_values, method=method)
+
+    @staticmethod
+    def table(
+        dataset: Dataset,
+        metric: str | None = None,
+        table_type: str = "instance_algorithm",
+        test_type: str = "auto",
+        posthoc_correction: str = "holm",
+        summary_stat: str = "auto",
+        reference_algorithm: str | None = None,
+        scope: str = "all-instances",
+        selected_instance: str | None = None,
+        algorithms_filter: list[str] | None = None,
+        instances_filter: list[str] | None = None,
+        alpha: float = 0.05,
+        precision: int = 4,
+    ) -> StatisticalTableResult:
+        """Generate a statistical benchmark table (instance_algorithm, pairwise_matrix, omnibus_posthoc)."""
+        return generate_table(
+            dataset=dataset,
+            metric=metric,
+            table_type=table_type,
+            test_type=test_type,
+            posthoc_correction=posthoc_correction,
+            summary_stat=summary_stat,
+            reference_algorithm=reference_algorithm,
+            scope=scope,
+            selected_instance=selected_instance,
+            algorithms_filter=algorithms_filter,
+            instances_filter=instances_filter,
+            alpha=alpha,
+            precision=precision,
+        )
+
+    @staticmethod
+    def explore(
+        dataset: Dataset,
+        metrics: list[str] | None = None,
+        algorithms: list[str] | None = None,
+        instances: list[str] | None = None,
+        alpha: float = 0.05,
+    ) -> DataExplorationResult:
+        """Explore dataset distributions, reveal multi-metric pivots, and recommend statistical tests."""
+        return explore(
+            dataset=dataset,
+            metrics=metrics,
+            algorithms=algorithms,
+            instances=instances,
+            alpha=alpha,
+        )
 
     @staticmethod
     def shapiro(groups: dict[str, np.ndarray], alpha: float = 0.05) -> list[AssumptionResult]:
