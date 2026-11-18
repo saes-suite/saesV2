@@ -49,7 +49,6 @@ dev = [
     "uvicorn>=0.28.0",
     "pydantic>=2.0.0",
     "python-multipart>=0.0.9",
-    "saes-ai>=0.1.0",
 ]
 all = [
     "saesV2[viz,api,ai]",

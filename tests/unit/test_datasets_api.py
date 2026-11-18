@@ -70,14 +70,19 @@ def test_datasets_crud_and_path_analysis():
     assert ana_data["cells_count"] == 1
     assert ana_data["results"][0]["instance"] == "ZDT1"
 
-    # 7. Chat with dataset_name
+    # 7. Chat with dataset_name (only mounted when saes-ai is installed)
+    import importlib.util
+
     chat_res = client.post(
         "/api/v1/chat",
         json={"query": "Summarize findings", "dataset_name": "test_benchmark.csv", "alpha": 0.05},
     )
-    assert chat_res.status_code == 200
-    chat_data = chat_res.json()
-    assert chat_data["context_used"] is True
+    if importlib.util.find_spec("saes_ai") is not None:
+        assert chat_res.status_code == 200
+        chat_data = chat_res.json()
+        assert chat_data["context_used"] is True
+    else:
+        assert chat_res.status_code == 404
 
     # 8. Update dataset content via PUT
     updated_csv = SAMPLE_CSV + "MOEAD,ZDT1,HV,3,0.666000,True\n"

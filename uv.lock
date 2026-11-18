@@ -1697,7 +1697,6 @@ dev = [
     { name = "pytest-cov" },
     { name = "python-multipart" },
     { name = "ruff" },
-    { name = "saes-ai" },
     { name = "seaborn" },
     { name = "uvicorn" },
 ]
@@ -1729,7 +1728,6 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'dev'", specifier = ">=0.0.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "saes-ai", marker = "extra == 'ai'", editable = "../saes-ai" },
-    { name = "saes-ai", marker = "extra == 'dev'", editable = "../saes-ai" },
     { name = "saesv2", extras = ["viz", "api", "ai"], marker = "extra == 'all'" },
     { name = "scipy", specifier = ">=1.10.0" },
     { name = "seaborn", marker = "extra == 'dev'", specifier = ">=0.12.0" },
