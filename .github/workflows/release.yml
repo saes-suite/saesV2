@@ -4,6 +4,17 @@ on:
   pull_request:
     types: [closed]
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        default: minor
+        options:
+          - minor
+          - patch
+          - major
 
 permissions:
   contents: write
@@ -11,7 +22,7 @@ permissions:
 jobs:
   release:
     name: Stamp Changelog & Bump Version
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.commit.outputs.version }}
@@ -37,24 +48,30 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Determine bump type from branch name
+      - name: Determine bump type from branch name or manual input
         id: bump
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          AUTHOR="@${{ github.event.pull_request.user.login }}"
-
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
-
-          # Branch naming convention
-          if [[ "$BRANCH" == major/* || "$BRANCH" == major-* ]]; then
-            echo "bump=major" >> "$GITHUB_OUTPUT"
-          elif [[ "$BRANCH" == patch/* || "$BRANCH" == patch-* || \
-                  "$BRANCH" == fix/* || "$BRANCH" == fix-* || \
-                  "$BRANCH" == hotfix/* || "$BRANCH" == hotfix-* ]]; then
-            echo "bump=patch" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "branch=manual" >> "$GITHUB_OUTPUT"
+            echo "author=@${{ github.actor }}" >> "$GITHUB_OUTPUT"
+            echo "bump=${{ inputs.bump }}" >> "$GITHUB_OUTPUT"
           else
-            echo "bump=minor" >> "$GITHUB_OUTPUT"
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            AUTHOR="@${{ github.event.pull_request.user.login }}"
+
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
+
+            # Branch naming convention
+            if [[ "$BRANCH" == major/* || "$BRANCH" == major-* ]]; then
+              echo "bump=major" >> "$GITHUB_OUTPUT"
+            elif [[ "$BRANCH" == patch/* || "$BRANCH" == patch-* || \
+                    "$BRANCH" == fix/* || "$BRANCH" == fix-* || \
+                    "$BRANCH" == hotfix/* || "$BRANCH" == hotfix-* ]]; then
+              echo "bump=patch" >> "$GITHUB_OUTPUT"
+            else
+              echo "bump=minor" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Stamp changelog and bump version
