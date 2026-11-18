@@ -3,6 +3,7 @@
 import sys
 from typing import Any
 
+from saesV2._version import __version__ as __version__
 from saesV2.api import (
     analyze,
     analyze_statistical_power,
@@ -51,8 +52,6 @@ from saesV2.domain.models import (
     ValidationReport,
     WinTieLossCell,
 )
-
-__version__ = "0.1.0"
 
 
 def __getattr__(name: str) -> Any:

@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy
 
+from saesV2._version import __version__
 from saesV2.domain.exceptions import StatisticalAnalysisError
 from saesV2.domain.models import (
     Dataset,
@@ -48,7 +49,7 @@ def generate_environment_manifest(
     return EnvironmentManifest(
         python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         platform=platform.platform(),
-        saes_version="0.1.0",
+        saes_version=__version__,
         scipy_version=scipy.__version__,
         numpy_version=np.__version__,
         pandas_version=pd.__version__,

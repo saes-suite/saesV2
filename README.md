@@ -1,4 +1,8 @@
-# SAES — Scientific Statistical Evaluation Suite
+<p align="center">
+  <img src="assets/saes-logo.svg" alt="SAES Logo" width="128" />
+</p>
+
+# SAES — Stochastic Algorithm Evaluation Suite (`saesV2`)
 
 Modern, high-performance Python library and API service for automated statistical analysis, hypothesis testing, and benchmark evaluation of stochastic algorithms.
 
@@ -8,20 +12,19 @@ Modern, high-performance Python library and API service for automated statistica
 
 ```bash
 # 1. Core library (lightweight, zero GUI dependencies)
-pip install saes
+pip install saesV2
 
 # 2. With visualization support (Matplotlib, Seaborn, Plotly)
-pip install "saes[viz]"
+pip install "saesV2[viz]"
 
 # 3. With REST API service (FastAPI, Uvicorn)
-pip install "saes[api]"
+pip install "saesV2[api]"
 
-# 4. With AI Chatbot connectors (Anthropic, OpenAI)
-pip install "saes[chat]"
-
-# 5. Full installation
-pip install "saes[all]"
+# 4. Full installation (viz + api)
+pip install "saesV2[all]"
 ```
+
+> For AI chat interpretation and MCP server support, install [`saes-ai`](../saes-ai/README.md).
 
 ---
 
@@ -30,46 +33,37 @@ pip install "saes[all]"
 ### Python Programmatic API
 
 ```python
-import saes
+import saesV2
 
 # 1. Load benchmark dataset
-dataset = saes.load("data.csv")
+dataset = saesV2.load("data.csv")
 
 # 2. Validate format & constraints
-validation = saes.validate(dataset)
+validation = saesV2.validate(dataset)
 assert validation.is_valid
 
 # 3. Automated statistical analysis & test selection
-report = saes.analyze(dataset, alpha=0.05)
+report = saesV2.analyze(dataset, alpha=0.05)
 print(report.to_dataframe())
-```
-
-### Conversational Statistical Agent
-
-```python
-from saes.chat import StatisticalChatAgent
-
-agent = StatisticalChatAgent(report=report, dataset=dataset)
-response = agent.ask("Why was Welch's ANOVA chosen for ZDT1?")
-print(response)
 ```
 
 ### Launch REST API
 
 ```bash
-uvicorn saes.server.app:app --reload --port 8060
+uvicorn saesV2.server.app:app --reload --port 8060
+# Or via Makefile:
+make start-api
 ```
 
 ---
 
 ## 🛠️ Repository Architecture
 
-- `saes.domain`: Dataset models, test results, exception hierarchies.
-- `saes.io`: CSV benchmark parser.
-- `saes.validation`: Structural and value validation rules.
-- `saes.stats`: Parametric & Welch t-tests, ANOVA, Shapiro-Wilk, Levene, and decision engine.
-- `saes.visualization`: Publication-grade static and interactive plot generators.
-- `saes.server`: FastAPI REST backend.
-- `saes.chat`: Statistical AI interpretation agent.
-- `saes.mcp`: Model Context Protocol server structure (prepared).
-- `saes.plugins.claude`: Claude plugin and tool manifests.
+- `saesV2.domain`: Dataset models, test results, exception hierarchies.
+- `saesV2.io`: CSV benchmark parser.
+- `saesV2.validation`: Structural and value validation rules.
+- `saesV2.stats`: Parametric & Welch t-tests, ANOVA, Shapiro-Wilk, Levene, non-parametric tests, Bayesian ranking, and decision engine.
+- `saesV2.app`: End-to-end statistical analysis pipeline (`AnalysisReport`).
+- `saesV2.reports`: Statistical tables, data exploration, power analysis, performance profiles, and FAIR reproducibility generators.
+- `saesV2.visualization`: Publication-grade static and interactive plot generators.
+- `saesV2.server`: FastAPI REST backend (`:8060`).

@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from saesV2._version import __version__
 from saesV2.server.routes.analysis import router as analysis_router
 from saesV2.server.routes.datasets import router as datasets_router
 from saesV2.server.routes.health import router as health_router
@@ -13,7 +14,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="SAES REST API",
         description="Stochastic Algorithm Evaluation Suite - Automated Statistical Analysis & AI Workbench",
-        version="0.1.0",
+        version=__version__,
     )
 
     app.add_middleware(

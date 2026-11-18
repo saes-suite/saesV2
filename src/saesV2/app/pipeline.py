@@ -28,6 +28,11 @@ class AnalysisReport:
 
     cell_analyses: list[CellAnalysis] = field(default_factory=list)
 
+    @property
+    def cells_count(self) -> int:
+        """Return total number of evaluated experimental cells."""
+        return len(self.cell_analyses)
+
     def get(self, instance: str, metric: str) -> CellAnalysis | None:
         """Fetch cell analysis by instance and metric name."""
         for ca in self.cell_analyses:
