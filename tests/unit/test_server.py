@@ -191,3 +191,15 @@ def test_tables_and_explore_endpoints() -> None:
     assert "import saesV2" in rep_data["python_script"]
     assert "nbformat" in rep_data["jupyter_notebook_json"]
 
+    # Test Plot export endpoint (png, svg, pdf)
+    for fmt, expected_ct in [("png", "image/png"), ("svg", "image/svg+xml"), ("pdf", "application/pdf")]:
+        plot_file = io.BytesIO(SAMPLE_CSV.encode("utf-8"))
+        res_plot = client.post(
+            "/api/v1/plots/export",
+            files={"file": ("data.csv", plot_file, "text/csv")},
+            data={"plot_type": "boxplot", "metric": "HV", "export_format": fmt, "dpi": "100"},
+        )
+        assert res_plot.status_code == 200
+        assert res_plot.headers["content-type"].startswith(expected_ct)
+        assert len(res_plot.content) > 50
+

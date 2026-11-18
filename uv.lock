@@ -1626,7 +1626,7 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "python-multipart" },
-    { name = "saesv2" },
+    { name = "saesv2", extra = ["viz"] },
     { name = "uvicorn" },
 ]
 
@@ -1645,7 +1645,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "saesv2", editable = "." },
+    { name = "saesv2", extras = ["viz"], editable = "." },
     { name = "uvicorn", specifier = ">=0.28.0" },
 ]
 provides-extras = ["providers", "dev"]

@@ -501,6 +501,50 @@ def export_dataset_table(
         raise HTTPException(status_code=400, detail=f"Table export error: {e!s}") from e
 
 
+@router.post("/{filename}/plots/export")
+def export_dataset_plot(
+    filename: str,
+    plot_type: Annotated[str, Form()] = "boxplot",
+    metric: Annotated[str | None, Form()] = None,
+    instance: Annotated[str | None, Form()] = None,
+    export_format: Annotated[str, Form()] = "png",
+    scope: Annotated[str, Form()] = "all-instances",
+    alpha: Annotated[float, Form()] = 0.05,
+    rope_percent: Annotated[float, Form()] = 1.0,
+    palette: Annotated[str | None, Form()] = None,
+    dpi: Annotated[int, Form()] = 300,
+) -> Response:
+    """Generate and export a statistical plot or diagram for a saved dataset in PNG, SVG, or PDF."""
+    safe_name = Path(filename).name
+    file_path = get_datasets_dir() / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset '{safe_name}' not found.")
+
+    try:
+        dataset = saesV2.load(file_path)
+        kwargs: dict[str, object] = {"alpha": alpha, "scope": scope, "rope_percent": rope_percent}
+        if palette:
+            kwargs["palette"] = palette
+        file_bytes, media_type, ext = saesV2.export_plot(
+            dataset=dataset,
+            plot_type=plot_type,
+            metric=metric,
+            instance=instance,
+            export_format=export_format,
+            dpi=dpi,
+            **kwargs,
+        )
+        safe_metric = metric or (dataset.metrics[0] if dataset.metrics else "metric")
+        out_name = f"saes_{plot_type}_{safe_metric}.{ext}"
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{out_name}"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plot export error: {e!s}") from e
+
+
 @router.get("/{filename}/explore", response_model=DataExplorationResponse)
 def get_explore_dataset_from_path(
     filename: str,

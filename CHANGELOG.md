@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `saesV2.export_plot(...)` programmatic Python API to export any registered statistical plot or diagram (`boxplot`, `violin`, `critical-distance`, `bayesian-rank`, `barplot`, `lineplot`, `ecdf`, `scatter`) as PNG (300 DPI), SVG, or PDF bytes.
+- REST API plot export endpoints `POST /api/v1/plots/export` and `POST /api/v1/datasets/{filename}/plots/export` returning downloadable PNG, SVG, or PDF figures.
 - Dolan-Moré (2002) performance profiles and meta-benchmarking engine (`saes.stats.profiles.compute_performance_profiles`, `saes.profiles`) computing solver efficiency $\rho(1)$, robustness $\lim \rho(\tau)$, $\tau$ curves, and global pairwise Win/Tie/Loss (W/T/L) and Copeland score ranking matrices across multi-problem benchmark suites.
 - Statistical power and experimental design planning engine (`saes.stats.power.analyze_statistical_power`, `calculate_statistical_power`, `estimate_required_sample_size`, `generate_power_curves`, `saes.power`) implementing exact two-sample power via non-central Student $t$ distribution (`scipy.stats.nct`), Hodges-Lehmann non-parametric sample size bounds, and post-hoc power audits to prevent Type II errors in stochastic algorithm evaluation.
 - FAIR science reproducibility pack generator (`saes.reports.reproducibility.generate_reproducibility_artifacts`, `saes.reproducibility`) creating standalone executable Python scripts (`reproduce.py` with `import saes`), Jupyter Notebooks (`.ipynb` nbformat 4), and environment SHA-256 integrity manifests.

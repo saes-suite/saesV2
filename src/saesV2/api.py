@@ -153,6 +153,60 @@ def plot(
     return plotter.plot(df_sub, **plot_kwargs)
 
 
+def export_plot(
+    dataset: Dataset,
+    plot_type: str = "boxplot",
+    metric: str | None = None,
+    instance: str | None = None,
+    export_format: str = "png",
+    dpi: int = 300,
+    **kwargs: Any,
+) -> tuple[bytes, str, str]:
+    """Generate and export a publication-grade plot as PNG, SVG, or PDF bytes.
+
+    Args:
+        dataset: SAES Dataset object.
+        plot_type: Key registered in PlotterRegistry.
+        metric: Metric identifier (defaults to first metric in dataset).
+        instance: Problem instance identifier (defaults to first instance for cell plots).
+        export_format: Target format ('png', 'svg', or 'pdf').
+        dpi: Resolution in dots per inch for raster formats (default 300).
+        **kwargs: Additional plotting parameters passed to `plot()`.
+
+    Returns:
+        Tuple of (file_bytes, media_type, extension).
+    """
+    import io
+
+    import matplotlib.pyplot as plt
+
+    fmt = export_format.strip().lower()
+    format_map: dict[str, tuple[str, str]] = {
+        "png": ("image/png", "png"),
+        "svg": ("image/svg+xml", "svg"),
+        "pdf": ("application/pdf", "pdf"),
+    }
+    if fmt not in format_map:
+        raise ValueError(f"Unsupported plot export format '{export_format}'. Supported: png, svg, pdf.")
+
+    fig = plot(
+        dataset,
+        plot_type=plot_type,
+        metric=metric,
+        instance=instance,
+        interactive=False,
+        **kwargs,
+    )
+    buf = io.BytesIO()
+    try:
+        fig.savefig(buf, format=fmt, dpi=dpi, bbox_inches="tight")
+    finally:
+        plt.close(fig)
+
+    media_type, ext = format_map[fmt]
+    return buf.getvalue(), media_type, ext
+
+
 def generate_table(
     dataset: Dataset,
     metric: str | None = None,
@@ -523,6 +577,7 @@ __all__ = [
     "validate",
     "analyze",
     "plot",
+    "export_plot",
     "generate_table",
     "export_table",
     "explore",

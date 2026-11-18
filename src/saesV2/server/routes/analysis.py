@@ -385,3 +385,43 @@ async def generate_reproducibility_endpoint(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Reproducibility error: {e!s}") from e
 
+
+@router.post("/plots/export")
+async def export_plot_csv(
+    file: Annotated[UploadFile, File(...)],
+    plot_type: Annotated[str, Form()] = "boxplot",
+    metric: Annotated[str | None, Form()] = None,
+    instance: Annotated[str | None, Form()] = None,
+    export_format: Annotated[str, Form()] = "png",
+    scope: Annotated[str, Form()] = "all-instances",
+    alpha: Annotated[float, Form()] = 0.05,
+    rope_percent: Annotated[float, Form()] = 1.0,
+    palette: Annotated[str | None, Form()] = None,
+    dpi: Annotated[int, Form()] = 300,
+) -> Response:
+    """Generate and export a statistical plot or diagram in PNG, SVG, or PDF format."""
+    content = await file.read()
+    try:
+        dataset = saesV2.load(io.BytesIO(content))
+        kwargs: dict[str, object] = {"alpha": alpha, "scope": scope, "rope_percent": rope_percent}
+        if palette:
+            kwargs["palette"] = palette
+        file_bytes, media_type, ext = saesV2.export_plot(
+            dataset=dataset,
+            plot_type=plot_type,
+            metric=metric,
+            instance=instance,
+            export_format=export_format,
+            dpi=dpi,
+            **kwargs,
+        )
+        safe_metric = metric or (dataset.metrics[0] if dataset.metrics else "metric")
+        out_name = f"saes_{plot_type}_{safe_metric}.{ext}"
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{out_name}"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plot export error: {e!s}") from e
+

@@ -168,3 +168,20 @@ def test_custom_color_map() -> None:
     cmap = get_color_map(algs, palette_name="Set1", custom_colors=custom)
     assert cmap["NSGAII"] == "#E41A1C"
     assert cmap["MOEAD"].startswith("#")
+
+
+def test_export_plot_api(sample_df: pd.DataFrame) -> None:
+    import saesV2
+    from saesV2.domain.models import Dataset
+
+    ds = Dataset(df=sample_df)
+    for fmt, expected_mt in [("png", "image/png"), ("svg", "image/svg+xml"), ("pdf", "application/pdf")]:
+        raw, media_type, ext = saesV2.export_plot(
+            ds, plot_type="boxplot", metric="HV", export_format=fmt, dpi=100
+        )
+        assert media_type == expected_mt
+        assert ext == fmt
+        assert len(raw) > 50
+
+    with pytest.raises(ValueError, match="Unsupported plot export format"):
+        saesV2.export_plot(ds, plot_type="boxplot", metric="HV", export_format="bmp")
