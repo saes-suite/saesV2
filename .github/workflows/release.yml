@@ -13,6 +13,8 @@ jobs:
     name: Stamp Changelog & Bump Version
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.commit.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -66,10 +68,46 @@ jobs:
           uv sync --extra dev
 
       - name: Commit and push release changes
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.txt CHANGELOG.md pyproject.toml uv.lock
           RELEASE_VERSION=$(cat version.txt | sed 's/-SNAPSHOT//')
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
           git commit -m "Setting release v${RELEASE_VERSION} from ${{ steps.bump.outputs.branch }} [skip ci]"
+          git tag "v${RELEASE_VERSION}"
           git push
+          git push origin "v${RELEASE_VERSION}"
+
+  publish-pypi:
+    name: Publish saesV2 to PyPI
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout released tag
+        uses: actions/checkout@v4
+        with:
+          ref: "v${{ needs.release.outputs.version }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and sdist
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

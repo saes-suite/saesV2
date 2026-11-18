@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- Initial release of SAES core statistics suite.
+- One-way ANOVA and Welch's ANOVA tests.
+- Two-sample independent, Welch's, and paired t-tests.
+- Normality checking via Shapiro-Wilk test.
+- Variance homogeneity checking via Levene's test.
+- Automatic statistical test selection decision engine.
+- Effect size calculations (Cohen's d, Eta-squared).
+- High-level orchestration pipeline.
 - `saesV2.export_plot(...)` programmatic Python API to export any registered statistical plot or diagram (`boxplot`, `violin`, `critical-distance`, `bayesian-rank`, `barplot`, `lineplot`, `ecdf`, `scatter`) as PNG (300 DPI), SVG, or PDF bytes.
 - REST API plot export endpoints `POST /api/v1/plots/export` and `POST /api/v1/datasets/{filename}/plots/export` returning downloadable PNG, SVG, or PDF figures.
 - Dolan-Moré (2002) performance profiles and meta-benchmarking engine (`saes.stats.profiles.compute_performance_profiles`, `saes.profiles`) computing solver efficiency $\rho(1)$, robustness $\lim \rho(\tau)$, $\tau$ curves, and global pairwise Win/Tie/Loss (W/T/L) and Copeland score ranking matrices across multi-problem benchmark suites.
@@ -29,22 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PEP 561 `py.typed` marker, core `pydantic>=2.0.0` dependency, and lazy loading for `PlotterRegistry`.
 
 ### Fixed
+
 - Fixed LaTeX table compilation errors in `render_latex_table` and `export_flat_table` where unescaped Unicode characters (`±`, `α`, `−`, `≈`, `—`, `²`) in benchmark table captions, cells, and headers caused fatal `pdflatex` compilation errors (`Unicode character not set up for use with LaTeX`). Added automated conversion of mathematical symbols to standard LaTeX math commands and `\footnotesize` scaling for publication compliance.
 
 ### Changed
+
 - Decoupled and extracted `chat`, `mcp`, and `plugins` into the dedicated `saes-ai` package.
 - `saes.server.app` now dynamically mounts `saes_ai.server.routes` when `saes-ai` is installed without internal legacy fallbacks.
 - Cleaned core dependencies by removing `chat` extra and delegating AI tooling to `[ai]` optional extra (`saes-ai`).
 
-## [0.1.0] - 2026-08-19
-
-### Added
-
-- Initial release of SAES core statistics suite.
-- One-way ANOVA and Welch's ANOVA tests.
-- Two-sample independent, Welch's, and paired t-tests.
-- Normality checking via Shapiro-Wilk test.
-- Variance homogeneity checking via Levene's test.
-- Automatic statistical test selection decision engine.
-- Effect size calculations (Cohen's d, Eta-squared).
-- High-level orchestration pipeline.
+## [Released]

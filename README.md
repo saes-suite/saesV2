@@ -1,7 +1,5 @@
 # SAES — Scientific Statistical Evaluation Suite
 
-[![CI](https://github.com/oastce/saes/actions/workflows/tests.yml/badge.svg)](https://github.com/oastce/saes/actions)
-
 Modern, high-performance Python library and API service for automated statistical analysis, hypothesis testing, and benchmark evaluation of stochastic algorithms.
 
 ---
@@ -59,7 +57,7 @@ print(response)
 ### Launch REST API
 
 ```bash
-uvicorn saes.server.app:app --reload --port 8000
+uvicorn saes.server.app:app --reload --port 8060
 ```
 
 ---
