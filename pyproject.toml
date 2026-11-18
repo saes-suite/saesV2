@@ -32,9 +32,6 @@ api = [
     "pydantic>=2.0.0",
     "python-multipart>=0.0.9",
 ]
-ai = [
-    "saes-ai>=0.1.0",
-]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -51,7 +48,7 @@ dev = [
     "python-multipart>=0.0.9",
 ]
 all = [
-    "saesV2[viz,api,ai]",
+    "saesV2[viz,api]",
 ]
 
 [project.scripts]
@@ -59,9 +56,6 @@ saes-api = "saesV2.server.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/saesV2"]
-
-[tool.uv.sources]
-saes-ai = { path = "../saes-ai", editable = true }
 
 [tool.ruff]
 line-length = 120
