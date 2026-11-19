@@ -97,6 +97,28 @@ jobs:
           git push
           git push origin "v${RELEASE_VERSION}"
 
+      - name: Create GitHub Release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.commit.outputs.version }}
+        run: |
+          python3 - <<'EOF'
+          import os, pathlib, re
+
+          version = os.environ["VERSION"]
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = re.compile(
+              rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = pattern.search(text)
+          notes = match.group(0).strip() if match else f"Release v{version}"
+          pathlib.Path("release_notes.md").write_text(notes + "\n", encoding="utf-8")
+          EOF
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes-file release_notes.md
+
   publish-pypi:
     name: Publish saesV2 to PyPI
     needs: release

@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Released]
+
+## [0.3.0] — 2026-11-19 (@rorro6787)
+
 ### Fixed
 
 - Added `cells_count` property to `AnalysisReport` (`saesV2.app.pipeline`) so generated reproducibility scripts and notebooks can access `analysis.cells_count` without raising `AttributeError`.
 - Resolved `__version__` dynamically from package metadata (`importlib.metadata`) with `version.txt` fallback and replaced hardcoded `"0.1.0"` versions in `saesV2.server` and `saesV2.reports.reproducibility`.
 - Updated `README.md` (added SAES logo, fixed `saesV2` package/module names and removed obsolete `saes.chat` references) and `Makefile` help text.
-
-## [Released]
 
 ## [0.2.0] — 2026-11-18 (@rorro6787)
 
