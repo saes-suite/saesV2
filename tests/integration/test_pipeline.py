@@ -24,6 +24,7 @@ MOEAD,ZDT1,HV,2,0.665900,True
 
     analysis_report = saesV2.analyze(dataset, alpha=0.05, generate_plots=False)
     assert len(analysis_report.cell_analyses) == 1
+    assert analysis_report.cells_count == 1
 
     cell_res = analysis_report.cell_analyses[0]
     assert cell_res.instance == "ZDT1"

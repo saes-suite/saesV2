@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from saesV2._version import __version__
 from saesV2.domain.models import (
     AssumptionResult,
     BayesianRankResult,
@@ -21,7 +22,7 @@ class HealthResponse(BaseModel):
     """Health check response."""
 
     status: str = "ok"
-    version: str = "0.1.0"
+    version: str = Field(default_factory=lambda: __version__)
     service: str = "saes-api"
 
 
