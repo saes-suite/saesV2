@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saesV2"
-version = "0.2.0"
+version = "0.3.0"
 description = "Stochastic Algorithm Evaluation Suite - Scientific Python library for statistical benchmarking"
 readme = "README.md"
 requires-python = ">=3.11"
