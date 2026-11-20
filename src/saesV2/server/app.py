@@ -29,14 +29,6 @@ def create_app() -> FastAPI:
     app.include_router(datasets_router)
     app.include_router(analysis_router)
 
-    # Mount SAES-AI routes if installed in the environment
-    try:
-        from saes_ai.server.routes import router as ai_router
-
-        app.include_router(ai_router)
-    except ImportError:
-        pass
-
     return app
 
 
