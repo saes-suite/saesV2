@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Decoupled `saesV2.server.app` from `saes_ai` by removing optional runtime mounting of `saes_ai.server.routes` on `:8060`.
+- Removed legacy `saes` module alias from `saesV2/__init__.py` and `ValidationIssueSchema` alias from `saesV2/server/schemas.py`.
+
+### Fixed
+
+- Use absolute `raw.githubusercontent.com` URL for the SAES logo in `README.md` so it renders properly on PyPI.
+
 ## [Released]
 
 ## [0.3.0] — 2026-11-19 (@rorro6787)

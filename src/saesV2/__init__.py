@@ -1,6 +1,5 @@
 """SAES: Stochastic Algorithm Evaluation Suite."""
 
-import sys
 from typing import Any
 
 from saesV2._version import __version__ as __version__
@@ -107,7 +106,4 @@ __all__ = [
     "analyze_statistical_power",
     "generate_reproducibility_artifacts",
 ]
-
-# Support importing as saes backward-compatibility alias
-sys.modules.setdefault("saes", sys.modules[__name__])
 

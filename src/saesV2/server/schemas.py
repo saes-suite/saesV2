@@ -26,10 +26,6 @@ class HealthResponse(BaseModel):
     service: str = "saes-api"
 
 
-# Backwards-compatible alias for ValidationIssue
-ValidationIssueSchema = ValidationIssue
-
-
 class ValidationResponse(BaseModel):
     """Validation response report."""
 

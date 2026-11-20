@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/saes-logo.svg" alt="SAES Logo" width="128" />
+  <img src="https://raw.githubusercontent.com/saes-suite/saesV2/main/assets/saes-logo.svg" alt="SAES Logo" width="128" />
 </p>
 
 # SAES — Stochastic Algorithm Evaluation Suite (`saesV2`)
@@ -11,7 +11,7 @@ Modern, high-performance Python library and API service for automated statistica
 ## 📦 Installation
 
 ```bash
-# 1. Core library (lightweight, zero GUI dependencies)
+# 1. Core library (lightweight)
 pip install saesV2
 
 # 2. With visualization support (Matplotlib, Seaborn, Plotly)
@@ -23,10 +23,6 @@ pip install "saesV2[api]"
 # 4. Full installation (viz + api)
 pip install "saesV2[all]"
 ```
-
-> For AI chat interpretation and MCP server support, install [`saes-ai`](../saes-ai/README.md).
-
----
 
 ## 🚀 Quick Usage
 
